@@ -2,7 +2,7 @@
 
 Rotational joints (ITR, OTR) ride a 1:40 worm gear between the XL330 motor
 and the tube. Translational joints (ITT, OTT) ride a lead screw between the
-XL430 motor and the tube, with a configurable travel range in mm.
+XC430 motor and the tube, with a configurable travel range in mm.
 
 Everything here is plain Python with no rospy / dynamixel_sdk dependency, so
 it can be unit tested without ROS or hardware attached.
@@ -14,7 +14,7 @@ from typing import Optional
 PULSES_PER_REV = 4096
 DEG_PER_PULSE = 360.0 / PULSES_PER_REV  # 0.087890625 deg/pulse at the motor shaft
 
-# Dynamixel X-series (XL330/XL430) Profile Velocity / Profile Acceleration LSB
+# Dynamixel X-series (XL330/XC430) Profile Velocity / Profile Acceleration LSB
 # units, per the ROBOTIS control table (0.229 rev/min and 214.577 rev/min^2
 # per unit, respectively — same for both motor models).
 PROFILE_VELOCITY_REV_PER_MIN = 0.229

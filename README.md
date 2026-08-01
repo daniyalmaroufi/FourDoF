@@ -6,8 +6,8 @@ Control stack for a 4-DOF robot built from two nested tubes:
 |---|---|---|---|
 | ITR (Inner Tube Rotation) | XL330-M288 | degrees, continuous | 1:40 worm gear |
 | OTR (Outer Tube Rotation) | XL330-M288 | degrees, continuous | 1:40 worm gear |
-| ITT (Inner Tube Translation) | XL430-W250 | mm, bounded range | 2.54 mm/rev lead screw |
-| OTT (Outer Tube Translation) | XL430-W250 | mm, bounded range | 2.54 mm/rev lead screw |
+| ITT (Inner Tube Translation) | XC430-W240 | mm, bounded range | 2.54 mm/rev lead screw |
+| OTT (Outer Tube Translation) | XC430-W240 | mm, bounded range | 2.54 mm/rev lead screw |
 
 ITR/OTR and ITT/OTT are wired to **two separate serial buses** and run as two
 independent ROS1 nodes — the **Rotational Controller** and the

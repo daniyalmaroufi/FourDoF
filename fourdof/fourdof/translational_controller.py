@@ -1,6 +1,6 @@
 """TranslationalController: the OOP control module for ITT and OTT.
 
-Each joint is an XL430-W250 motor driving its tube through a lead screw, run
+Each joint is an XC430-W240 motor driving its tube through a lead screw, run
 in Extended Position Control Mode since a real travel range spans many motor
 turns. Extended Position Mode does not enforce the firmware's position
 limits, so each joint's [min_mm, max_mm] travel range is checked in software

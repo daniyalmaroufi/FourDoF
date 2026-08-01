@@ -165,7 +165,7 @@ class FourDoFControlCLI(object):
 ║  HARDWARE:                                                                 ║
 ║  ─────────                                                                 ║
 ║   ITR/OTR: XL330-M288, 1:40 worm gear (40 motor rev = 1 tube rev)         ║
-║   ITT/OTT: XL430-W250, 2.54 mm/rev lead screw, joint-specific mm range    ║
+║   ITT/OTT: XC430-W240, 2.54 mm/rev lead screw, joint-specific mm range    ║
 ╚════════════════════════════════════════════════════════════════════════════╝
 
 ⚠  Make sure rotational_controller_node and translational_controller_node are running!

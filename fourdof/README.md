@@ -1,7 +1,7 @@
 # fourdof
 
 ROS1 (Noetic) package for the 4-DOF robot: 2x XL330-M288 rotational motors
-(ITR, OTR) and 2x XL430-W250 translational motors (ITT, OTT), driven over the
+(ITR, OTR) and 2x XC430-W240 translational motors (ITT, OTT), driven over the
 Dynamixel SDK via the vendored `dynamixel_easy_sdk` wrapper.
 
 ## Architecture
