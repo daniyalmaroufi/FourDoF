@@ -3,7 +3,7 @@
 # (40 motor revolutions = 1 tube revolution). Tube rotation is continuous, so
 # no min/max range is configured here.
 
-device_name: "/dev/ttyUSB0"
+device_name: "/dev/ttyUSB5"
 baud_rate: 57600
 protocol: 2.0
 
@@ -14,6 +14,6 @@ joints:
     default_speed_deg_s: 30.0     # tube deg/s; independent per joint, overridable at runtime via `speed`
 
   OTR:
-    motor_id: 2
+    motor_id: 0
     gear_ratio: 40
     default_speed_deg_s: 30.0

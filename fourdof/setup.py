@@ -6,6 +6,9 @@ d = generate_distutils_setup(
     package_dir={
         '': '.', 
         'dynamixel_easy_sdk': 'libs/dynamixel_easy_sdk'
+    },
+    package_data={
+        'dynamixel_easy_sdk': ['control_table/*.model']
     }
 )
 

@@ -10,7 +10,7 @@ from dynamixel_easy_sdk.dynamixel_error import DxlRuntimeError
 
 def scan_motors():
     # Settings from config or defaults
-    port = '/dev/ttyUSB0'
+    port = '/dev/ttyUSB4'
     baud = 57600
     
     print(f"Scanning on {port} at {baud} baud...")

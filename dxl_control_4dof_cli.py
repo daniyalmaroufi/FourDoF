@@ -134,38 +134,38 @@ class FourDoFControlCLI(object):
     def print_help(self):
         help_text = """
 ╔════════════════════════════════════════════════════════════════════════════╗
-║                    4-DOF ROBOT CONTROL CLI                                  ║
+║                    4-DOF ROBOT CONTROL CLI                                 ║
 ╠════════════════════════════════════════════════════════════════════════════╣
 ║                                                                            ║
 ║  JOINTS:                                                                   ║
 ║  ───────                                                                   ║
-║   itr, otr   - Inner/Outer Tube Rotation   (degrees, continuous)          ║
-║   itt, ott   - Inner/Outer Tube Translation (mm, bounded range)           ║
+║   itr, otr   - Inner/Outer Tube Rotation   (degrees, continuous)           ║
+║   itt, ott   - Inner/Outer Tube Translation (mm, bounded range)            ║
 ║                                                                            ║
 ║  MOVEMENT COMMANDS:                                                        ║
 ║  ─────────────────                                                         ║
-║   <joint> a <value> [speed]  - Absolute move to <value>                   ║
-║   <joint> r <delta> [speed]  - Relative move by <delta>                   ║
+║   <joint> a <value> [speed]  - Absolute move to <value>                    ║
+║   <joint> r <delta> [speed]  - Relative move by <delta>                    ║
 ║                                                                            ║
-║      Example:  itr a 90 20    - Rotate ITR to 90 deg at 20 deg/s          ║
-║      Example:  ott r -5       - Move OTT back 5 mm at its default speed  ║
+║      Example:  itr a 90 20    - Rotate ITR to 90 deg at 20 deg/s           ║
+║      Example:  ott r -5       - Move OTT back 5 mm at its default speed    ║
 ║                                                                            ║
 ╠════════════════════════════════════════════════════════════════════════════╣
 ║  UTILITY COMMANDS:                                                         ║
 ║  ──────────────────                                                        ║
-║   p [joint]           - Print position (all 4 joints if omitted)          ║
-║   speed <joint> <val>  - Set that joint's own default speed               ║
-║   home <joint>         - Zero the joint's current position                ║
-║   torque <joint> on|off - Enable/disable torque for that joint            ║
-║   s / stop <joint>|all - Hold at current position                        ║
-║   h or help            - Show this help                                   ║
-║   q or quit or exit    - Exit CLI                                         ║
+║   p [joint]           - Print position (all 4 joints if omitted)           ║
+║   speed <joint> <val>  - Set that joint's own default speed                ║
+║   home <joint>         - Zero the joint's current position                 ║
+║   torque <joint> on|off - Enable/disable torque for that joint             ║
+║   s / stop <joint>|all - Hold at current position                          ║
+║   h or help            - Show this help                                    ║
+║   q or quit or exit    - Exit CLI                                          ║
 ║                                                                            ║
 ╠════════════════════════════════════════════════════════════════════════════╣
 ║  HARDWARE:                                                                 ║
 ║  ─────────                                                                 ║
-║   ITR/OTR: XL330-M288, 1:40 worm gear (40 motor rev = 1 tube rev)         ║
-║   ITT/OTT: XC430-W240, 2.54 mm/rev lead screw, joint-specific mm range    ║
+║   ITR/OTR: XL330-M288, 1:40 worm gear (40 motor rev = 1 tube rev)          ║
+║   ITT/OTT: XC430-W240, 2.54 mm/rev lead screw, joint-specific mm range     ║
 ╚════════════════════════════════════════════════════════════════════════════╝
 
 ⚠  Make sure rotational_controller_node and translational_controller_node are running!

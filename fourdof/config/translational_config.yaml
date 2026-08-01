@@ -7,7 +7,7 @@
 # does not enforce the firmware's position limits, so these software limits
 # are the only thing standing between a bad command and the hardstop.
 
-device_name: "/dev/ttyUSB1"
+device_name: "/dev/ttyUSB3"
 baud_rate: 57600
 protocol: 2.0
 
@@ -15,13 +15,13 @@ joints:
   ITT:
     motor_id: 1
     pitch_mm: 2.54
-    min_mm: null    # TODO: set to ITT's real minimum travel position (mm)
-    max_mm: null    # TODO: set to ITT's real maximum travel position (mm)
+    min_mm: 0    # TODO: set to ITT's real minimum travel position (mm)
+    max_mm: 20    # TODO: set to ITT's real maximum travel position (mm)
     default_speed_mm_s: 5.0     # independent per joint, overridable at runtime via `speed`
 
   OTT:
-    motor_id: 2
+    motor_id: 0
     pitch_mm: 2.54
-    min_mm: null    # TODO: set to OTT's real minimum travel position (mm)
-    max_mm: null    # TODO: set to OTT's real maximum travel position (mm)
+    min_mm: 0    # TODO: set to OTT's real minimum travel position (mm)
+    max_mm: 20    # TODO: set to OTT's real maximum travel position (mm)
     default_speed_mm_s: 5.0

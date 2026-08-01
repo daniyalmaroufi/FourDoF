@@ -24,6 +24,23 @@ built on `fourdof/base_controller.py` + `fourdof/joint_math.py`) on top of the
 
 ## Dependencies not covered by rosdep
 
+Catkin's message generation step requires `empy` / `python3-empy` on the build
+machine. Install it alongside the Dynamixel Python helpers if `catkin build`
+stops at `Unable to find either executable 'empy' or Python module 'em'`:
+```bash
+sudo apt install python3-empy
+```
+
+If you are building through this repo's virtual environment, install the ROS
+compatible Python packages into that same interpreter as well:
+```bash
+pip install 'empy==3.3.4' pyyaml catkin_pkg importlib_resources
+```
+
+`fourdof/libs/dynamixel_easy_sdk/control_table.py` also uses the
+`importlib_resources` backport on Python 3.8 because `importlib.resources.files`
+is only available in newer Python versions.
+
 `libs/dynamixel_easy_sdk` imports `dynamixel_sdk` and `pyserial`. Install them
 with pip if `rosdep install` doesn't resolve them on your system:
 ```bash

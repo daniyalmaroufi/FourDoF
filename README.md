@@ -39,6 +39,11 @@ See [fourdof/README.md](fourdof/README.md) for package-level details.
   ```bash
   pip3 install dynamixel-sdk pyserial
   ```
+- If you launch through the repo's virtual environment, that interpreter also
+   needs `rospkg` because `rospy` imports it at startup:
+   ```bash
+   pip install rospkg
+   ```
 - Serial port access:
   ```bash
   sudo usermod -aG dialout $USER   # log out/in (or reboot) for this to take effect
@@ -50,16 +55,16 @@ See [fourdof/README.md](fourdof/README.md) for package-level details.
    package itself, so it needs to live under a workspace's `src/`. Either
    symlink it in or clone directly there:
    ```bash
-   mkdir -p ~/catkin_ws/src
-   ln -s /path/to/FourDoF/fourdof ~/catkin_ws/src/fourdof
+   mkdir -p ~/fourdof_catkin_ws/src
+   ln -s /path/to/FourDoF/fourdof ~/fourdof_catkin_ws/src/fourdof
    ```
 
 2. **Build.**
    ```bash
-   cd ~/catkin_ws
+   cd ~/fourdof_catkin_ws
    rosdep install --from-paths src --ignore-src -r -y
    catkin_make        # or: catkin build
-   source devel/setup.bash
+   source devel/setup.zsh   # use setup.bash only from bash
    ```
 
 3. **Identify the serial ports.** Plug in both controllers and check which
@@ -74,7 +79,8 @@ See [fourdof/README.md](fourdof/README.md) for package-level details.
    the bus-scan utility (edit the `port`/`baud` constants at the top of the
    script for whichever bus you're checking):
    ```bash
-   python3 ~/catkin_ws/src/fourdof/tests/scan_motors.py
+   source ~/fourdof_catkin_ws/devel/setup.zsh 
+   python3 ~/fourdof_catkin_ws/src/fourdof/tests/scan_motors.py
    ```
    Update `motor_id` in the config files if they don't match.
 
@@ -88,12 +94,14 @@ See [fourdof/README.md](fourdof/README.md) for package-level details.
 
 Start both controller nodes:
 ```bash
+source ~/fourdof_catkin_ws/devel/setup.zsh 
 roslaunch fourdof four_dof.launch
 ```
 
 In another terminal (with the same workspace sourced), run the CLI from the
 project root:
 ```bash
+source ~/fourdof_catkin_ws/devel/setup.zsh 
 python3 dxl_control_4dof_cli.py
 ```
 
@@ -114,7 +122,7 @@ The conversion math (gear ratio / lead-screw pitch, degree/mm ⇄ pulse, and
 translational range clamping) is unit tested with no ROS/hardware
 dependency:
 ```bash
-cd fourdof/tests
+cd ~/fourdof_catkin_ws/src/fourdof/tests
 python3 -m unittest test_joint_math -v
 ```
 # FourDoF

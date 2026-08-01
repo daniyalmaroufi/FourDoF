@@ -43,3 +43,8 @@ install(DIRECTORY launch/
 install(DIRECTORY config/
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/config
 )
+
+install(DIRECTORY libs/dynamixel_easy_sdk/control_table/
+  DESTINATION ${CATKIN_PACKAGE_PYTHON_DESTINATION}/dynamixel_easy_sdk/control_table
+  FILES_MATCHING PATTERN "*.model"
+)

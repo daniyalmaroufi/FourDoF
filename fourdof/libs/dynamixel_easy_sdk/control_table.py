@@ -29,6 +29,8 @@ from dynamixel_easy_sdk.data_types import ControlTableItem
 from dynamixel_easy_sdk.dynamixel_error import DxlRuntimeError
 
 CONTROL_TABLE_PATH = files('dynamixel_easy_sdk') / 'control_table'
+if not os.path.exists(os.path.join(str(CONTROL_TABLE_PATH), 'dynamixel.model')):
+    CONTROL_TABLE_PATH = os.path.join(os.path.dirname(__file__), 'control_table')
 
 
 class ControlTable:

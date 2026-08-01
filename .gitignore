@@ -29,3 +29,6 @@ srv/_*.py
 
 # Local hardware/config overrides some setups keep untracked
 *.local.yaml
+
+venv
+
