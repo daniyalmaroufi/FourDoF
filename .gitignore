@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Catkin / ROS1 build output (present if this repo is built in-place
+# rather than symlinked into a separate catkin workspace)
+build/
+build_isolated/
+devel/
+devel_isolated/
+install/
+install_isolated/
+logs/
+log/
+.catkin_workspace
+CATKIN_IGNORE
+
+# Generated ROS message/service Python bindings
+msg/_*.py
+srv/_*.py
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+*~
+
+# Local hardware/config overrides some setups keep untracked
+*.local.yaml

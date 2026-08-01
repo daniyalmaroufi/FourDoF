@@ -1,0 +1,16 @@
+<launch>
+  <arg name="rotational_config" default="$(find fourdof)/config/rotational_config.yaml" />
+  <arg name="translational_config" default="$(find fourdof)/config/translational_config.yaml" />
+
+  <!-- Topics/services resolve under /rotational_controller/... (own serial port) -->
+  <node name="rotational_controller" pkg="fourdof" type="rotational_controller_node.py"
+        ns="rotational_controller" output="screen">
+    <param name="config_file" value="$(arg rotational_config)" />
+  </node>
+
+  <!-- Topics/services resolve under /translational_controller/... (own serial port) -->
+  <node name="translational_controller" pkg="fourdof" type="translational_controller_node.py"
+        ns="translational_controller" output="screen">
+    <param name="config_file" value="$(arg translational_config)" />
+  </node>
+</launch>

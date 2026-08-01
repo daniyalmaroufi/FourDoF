@@ -1,0 +1,27 @@
+# Translational Controller: ITT (Inner Tube Translation) and OTT (Outer Tube Translation)
+# Each joint is an XL430-W250 motor driving its tube through a 2.54 mm/rev lead screw.
+#
+# IMPORTANT: min_mm/max_mm below are REQUIRED and have no safe default — the
+# node refuses to start until they're set to each joint's real travel limit.
+# Extended Position Control Mode (needed for multi-turn lead-screw travel)
+# does not enforce the firmware's position limits, so these software limits
+# are the only thing standing between a bad command and the hardstop.
+
+device_name: "/dev/ttyUSB1"
+baud_rate: 57600
+protocol: 2.0
+
+joints:
+  ITT:
+    motor_id: 1
+    pitch_mm: 2.54
+    min_mm: null    # TODO: set to ITT's real minimum travel position (mm)
+    max_mm: null    # TODO: set to ITT's real maximum travel position (mm)
+    default_speed_mm_s: 5.0     # independent per joint, overridable at runtime via `speed`
+
+  OTT:
+    motor_id: 2
+    pitch_mm: 2.54
+    min_mm: null    # TODO: set to OTT's real minimum travel position (mm)
+    max_mm: null    # TODO: set to OTT's real maximum travel position (mm)
+    default_speed_mm_s: 5.0
