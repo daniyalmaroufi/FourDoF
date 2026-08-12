@@ -15,5 +15,5 @@ joints:
 
   OTR:
     motor_id: 0
-    gear_ratio: 40
+    gear_ratio: -40
     default_speed_deg_s: 30.0

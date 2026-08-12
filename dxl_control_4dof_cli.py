@@ -105,6 +105,28 @@ class FourDoFControlCLI(object):
             return
         self._send(joint, delta, relative=True, speed=resolved_speed)
 
+    def move_otr2(self, move_cmd, value, speed=None):
+        """Virtual command: rotate OTR and ITR together by the same amount.
+
+        Unlike plain 'otr', which moves OTR alone, 'otr2' drives ITR by the
+        same delta so both tubes rotate in lockstep.
+        """
+        resolved_speed = speed if speed is not None else self.default_speeds['OTR']
+        if move_cmd == 'a':
+            otr_state = self.states.get('OTR')
+            if otr_state is None:
+                print('Error: No position feedback for OTR yet, cannot compute the coupled '
+                      'ITR move. Wait for feedback or use a relative move instead.')
+                return
+            delta = value - otr_state.position
+            self._send('OTR', value, relative=False, speed=resolved_speed)
+            self._send('ITR', delta, relative=True, speed=resolved_speed)
+        elif move_cmd == 'r':
+            self._send('OTR', value, relative=True, speed=resolved_speed)
+            self._send('ITR', value, relative=True, speed=resolved_speed)
+        else:
+            print(f"Error: Unknown move type '{move_cmd}'. Use 'a' (absolute) or 'r' (relative).")
+
     def print_position(self, joint=None):
         for j in ([joint] if joint else list(JOINT_INFO)):
             state = self.states.get(j)
@@ -169,6 +191,12 @@ class FourDoFControlCLI(object):
 ║                                                                            ║
 ║   Note: moving OTT also moves ITT by the same delta (same direction,       ║
 ║   same speed), since OTT physically carries ITT with it.                   ║
+║                                                                            ║
+║   otr2 a|r <value> [speed]   - Rotate OTR and ITR together by the same     ║
+║                                 amount (plain 'otr'/'itr' stay independent)║
+║                                                                            ║
+║      Example:  otr2 a 45      - Rotate both OTR and ITR to 45 deg          ║
+║      Example:  otr2 r 10 15   - Rotate both 10 deg further at 15 deg/s     ║
 ║                                                                            ║
 ╠════════════════════════════════════════════════════════════════════════════╣
 ║  UTILITY COMMANDS:                                                         ║
@@ -281,6 +309,19 @@ class FourDoFControlCLI(object):
                         joint = self._parse_joint(parts[1])
                         if joint is not None:
                             self.stop(joint)
+
+                elif cmd == 'otr2':
+                    if len(parts) < 3:
+                        print('Error: Missing arguments. Usage: otr2 a|r <value> [speed]')
+                        continue
+                    move_cmd = parts[1].lower()
+                    try:
+                        value = float(parts[2])
+                        speed = float(parts[3]) if len(parts) > 3 else None
+                    except ValueError:
+                        print('Error: Invalid number format')
+                        continue
+                    self.move_otr2(move_cmd, value, speed)
 
                 elif cmd.upper() in JOINT_INFO:
                     joint = cmd.upper()
