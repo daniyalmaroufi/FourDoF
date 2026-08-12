@@ -98,6 +98,40 @@ source ~/fourdof_catkin_ws/devel/setup.zsh
 roslaunch fourdof four_dof.launch
 ```
 
+Expected Output:
+```
+➜  fourdof git:(main) ✗ roslaunch fourdof four_dof.launch
+... logging to /home/daniyal/.ros/log/39147f32-6e68-11f1-906a-4b41e9977cdc/roslaunch-tina-1156137.log
+Checking log directory for disk usage. This may take a while.
+Press Ctrl-C to interrupt
+
+started roslaunch server http://172.31.1.146:46321/
+
+SUMMARY
+========
+
+PARAMETERS
+ * /rosdistro: noetic
+ * /rosversion: 1.17.0
+ * /rotational_controller/rotational_controller/config_file: /home/daniyal/fou...
+ * /translational_controller/translational_controller/config_file: /home/daniyal/fou...
+
+NODES
+  /rotational_controller/
+    rotational_controller (fourdof/rotational_controller_node.py)
+  /translational_controller/
+    translational_controller (fourdof/translational_controller_node.py)
+
+ROS_MASTER_URI=http://localhost:11311
+
+process[rotational_controller/rotational_controller-1]: started with pid [1156151]
+process[translational_controller/translational_controller-2]: started with pid [1156152]
+[INFO] [1786559981.611970]: Rotational Controller connecting to /dev/ttyUSB2 @ 57600 baud (joints: ['ITR', 'OTR'])
+[INFO] [1786559981.617089]: Translational Controller connecting to /dev/ttyUSB3 @ 57600 baud (joints: ['ITT', 'OTT'])
+[INFO] [1786559981.681574]: rotational_controller_node ready.
+[INFO] [1786559981.693663]: translational_controller_node ready.
+```
+
 In another terminal (with the same workspace sourced), run the CLI from the
 project root:
 ```bash
