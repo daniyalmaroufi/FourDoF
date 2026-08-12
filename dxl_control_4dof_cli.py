@@ -83,10 +83,27 @@ class FourDoFControlCLI(object):
         print(f'{verb} move: {joint} -> {position:+.2f} {unit} @ {speed:.2f} {unit}/s')
 
     def move_absolute(self, joint, value, speed=None):
-        self._send(joint, value, relative=False, speed=speed if speed is not None else self.default_speeds[joint])
+        resolved_speed = speed if speed is not None else self.default_speeds[joint]
+        if joint == 'OTT':
+            ott_state = self.states.get('OTT')
+            if ott_state is None:
+                print('Error: No position feedback for OTT yet, cannot compute the coupled '
+                      'ITT move. Wait for feedback or use a relative move instead.')
+                return
+            delta = value - ott_state.position
+            self._send('OTT', value, relative=False, speed=resolved_speed)
+            self._send('ITT', delta, relative=True, speed=resolved_speed)
+            return
+        self._send(joint, value, relative=False, speed=resolved_speed)
 
     def move_relative(self, joint, delta, speed=None):
-        self._send(joint, delta, relative=True, speed=speed if speed is not None else self.default_speeds[joint])
+        resolved_speed = speed if speed is not None else self.default_speeds[joint]
+        if joint == 'OTT':
+            # ITT is physically carried by OTT, so it must follow the same delta.
+            self._send('OTT', delta, relative=True, speed=resolved_speed)
+            self._send('ITT', delta, relative=True, speed=resolved_speed)
+            return
+        self._send(joint, delta, relative=True, speed=resolved_speed)
 
     def print_position(self, joint=None):
         for j in ([joint] if joint else list(JOINT_INFO)):
@@ -149,6 +166,9 @@ class FourDoFControlCLI(object):
 ║                                                                            ║
 ║      Example:  itr a 90 20    - Rotate ITR to 90 deg at 20 deg/s           ║
 ║      Example:  ott r -5       - Move OTT back 5 mm at its default speed    ║
+║                                                                            ║
+║   Note: moving OTT also moves ITT by the same delta (same direction,       ║
+║   same speed), since OTT physically carries ITT with it.                   ║
 ║                                                                            ║
 ╠════════════════════════════════════════════════════════════════════════════╣
 ║  UTILITY COMMANDS:                                                         ║

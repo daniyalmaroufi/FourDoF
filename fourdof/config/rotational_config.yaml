@@ -3,7 +3,7 @@
 # (40 motor revolutions = 1 tube revolution). Tube rotation is continuous, so
 # no min/max range is configured here.
 
-device_name: "/dev/ttyUSB5"
+device_name: "/dev/ttyUSB2"
 baud_rate: 57600
 protocol: 2.0
 
