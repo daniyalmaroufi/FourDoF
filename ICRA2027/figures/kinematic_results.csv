@@ -1,0 +1,40 @@
+set,set_name,trial,segment,type,commanded,measured,error,abs_error,circle_radius_mm,circle_resid_mm,t_start_s,t_end_s
+set1,1st Free Space Test,Exp 1,1,translation,20.0000,19.2593,-0.7407,0.7407,,,10.198,17.783
+set1,1st Free Space Test,Exp 2,1,translation,20.0000,19.4410,-0.5590,0.5590,,,2.583,10.333
+set1,1st Free Space Test,Exp 3,1,translation,20.0000,19.5842,-0.4158,0.4158,,,2.000,10.183
+set2,2nd Free Space Test,Exp 5,1,translation,35.0000,34.3999,-0.6001,0.6001,,,6.718,20.585
+set2,2nd Free Space Test,Exp 5,2,rotation,360.0000,351.7483,-8.2517,8.2517,16.8588,0.4305,27.633,50.651
+set2,2nd Free Space Test,Exp 6,1,translation,35.0000,34.4790,-0.5210,0.5210,,,5.615,19.515
+set2,2nd Free Space Test,Exp 6,2,rotation,360.0000,351.8993,-8.1007,8.1007,16.8156,0.4337,23.833,46.848
+set2,2nd Free Space Test,Exp 7,1,translation,35.0000,34.4312,-0.5688,0.5688,,,7.598,21.416
+set2,2nd Free Space Test,Exp 7,2,rotation,360.0000,351.8128,-8.1872,8.1872,16.8155,0.4341,24.483,47.516
+set3a,3rd Free Space Test (Top Right),Exp 8,1,translation,35.0000,34.4212,-0.5788,0.5788,,,9.700,22.983
+set3a,3rd Free Space Test (Top Right),Exp 8,2,rotation,360.0000,356.7375,-3.2625,3.2625,16.4766,0.3253,34.933,59.749
+set3a,3rd Free Space Test (Top Right),Exp 9,1,translation,35.0000,34.1785,-0.8215,0.8215,,,5.583,18.633
+set3a,3rd Free Space Test (Top Right),Exp 9,2,rotation,360.0000,356.3175,-3.6825,3.6825,16.5317,0.3330,23.733,48.698
+set3a,3rd Free Space Test (Top Right),Exp 10,1,translation,35.0000,34.2049,-0.7951,0.7951,,,4.750,17.851
+set3a,3rd Free Space Test (Top Right),Exp 10,2,rotation,360.0000,355.9046,-4.0954,4.0954,16.5309,0.3360,25.416,50.501
+set3b,3rd Free Space Test (Bottom Left),Exp 11,1,translation,35.0000,34.0545,-0.9455,0.9455,,,4.383,17.483
+set3b,3rd Free Space Test (Bottom Left),Exp 11,2,rotation,360.0000,358.4853,-1.5147,1.5147,17.1537,0.1110,22.433,47.616
+set3b,3rd Free Space Test (Bottom Left),Exp 12,1,translation,35.0000,34.0675,-0.9325,0.9325,,,2.768,15.883
+set3b,3rd Free Space Test (Bottom Left),Exp 12,2,rotation,360.0000,358.2564,-1.7436,1.7436,17.1147,0.1082,19.165,44.051
+set3b,3rd Free Space Test (Bottom Left),Exp 13,1,translation,35.0000,34.0019,-0.9981,0.9981,,,4.550,17.668
+set3b,3rd Free Space Test (Bottom Left),Exp 13,2,rotation,360.0000,358.2178,-1.7822,1.7822,17.1256,0.1103,19.215,43.833
+set4a,4th Free Space Test (Bottom Mid),Exp 14,1,translation,35.0000,34.1618,-0.8382,0.8382,,,4.918,17.983
+set4a,4th Free Space Test (Bottom Mid),Exp 14,2,rotation,180.0000,60.0536,-119.9464,119.9464,7.8453,0.0389,25.318,36.468
+set4a,4th Free Space Test (Bottom Mid),Exp 14,3,translation,35.0000,34.7018,-0.2982,0.2982,,,43.533,57.651
+set4a,4th Free Space Test (Bottom Mid),Exp 15,1,translation,35.0000,34.0727,-0.9273,0.9273,,,3.699,16.699
+set4a,4th Free Space Test (Bottom Mid),Exp 15,2,rotation,180.0000,60.9213,-119.0787,119.0787,7.7864,0.0360,20.432,31.682
+set4a,4th Free Space Test (Bottom Mid),Exp 15,3,translation,35.0000,34.7628,-0.2372,0.2372,,,34.299,48.432
+set4a,4th Free Space Test (Bottom Mid),Exp 16,1,translation,35.0000,34.0814,-0.9186,0.9186,,,3.335,16.450
+set4a,4th Free Space Test (Bottom Mid),Exp 16,2,rotation,180.0000,59.1611,-120.8389,120.8389,8.0815,0.0349,24.433,35.633
+set4a,4th Free Space Test (Bottom Mid),Exp 16,3,translation,35.0000,34.8220,-0.1780,0.1780,,,41.983,56.133
+set4b,4th Free Space Test (Bottom Right),Exp 17,1,translation,17.5000,16.4712,-1.0288,1.0288,,,6.268,12.850
+set4b,4th Free Space Test (Bottom Right),Exp 17,2,rotation,180.0000,65.4799,-114.5201,114.5201,3.2561,0.0161,16.800,26.118
+set4b,4th Free Space Test (Bottom Right),Exp 17,3,translation,17.5000,16.1941,-1.3059,1.3059,,,28.500,35.783
+set4b,4th Free Space Test (Bottom Right),Exp 18,1,translation,17.5000,17.2899,-0.2101,0.2101,,,3.483,10.115
+set4b,4th Free Space Test (Bottom Right),Exp 18,2,rotation,180.0000,81.8093,-98.1907,98.1907,3.7010,0.0363,12.865,23.833
+set4b,4th Free Space Test (Bottom Right),Exp 18,3,translation,17.5000,16.5012,-0.9988,0.9988,,,28.465,35.116
+set4b,4th Free Space Test (Bottom Right),Exp 19,1,translation,17.5000,17.1681,-0.3319,0.3319,,,3.950,10.500
+set4b,4th Free Space Test (Bottom Right),Exp 19,2,rotation,180.0000,81.4463,-98.5537,98.5537,3.7080,0.0371,11.433,22.300
+set4b,4th Free Space Test (Bottom Right),Exp 19,3,translation,17.5000,16.4644,-1.0356,1.0356,,,24.401,31.083
