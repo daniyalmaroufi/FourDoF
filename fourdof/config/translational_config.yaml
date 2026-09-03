@@ -7,7 +7,7 @@
 # does not enforce the firmware's position limits, so these software limits
 # are the only thing standing between a bad command and the hardstop.
 
-device_name: "/dev/ttyUSB3" #TODO: set to the correct USB port for the translational controller
+device_name: "/dev/ttyUSB1" #TODO: set to the correct USB port for the translational controller
 baud_rate: 57600
 protocol: 2.0
 
