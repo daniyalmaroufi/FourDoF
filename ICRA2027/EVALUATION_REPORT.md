@@ -116,14 +116,21 @@ The 360° rotation sets (b–d) trace the expected closed cone; the 180° sets
 Trial-to-trial agreement is sub-millimetre in every set. Final-position spread
 about the per-set mean averages **0.391 mm** (worst case 1.445 mm):
 
-| Set | Plane RMS, first 10 s (mm) | Plane RMS, full trajectory (mm) | 3D repeatability, mean (max) (mm) |
+| Set | Plane RMS, first 10 s (mm) | Plane RMS, full trajectory (mm) | 3D repeatability at end of motion, mean (max) (mm) |
 | :-- | --: | --: | --: |
-| `set1`  | 0.053 | 0.06 | 0.165 (0.245) |
-| `set2`  | 0.070 | 8.17 | 0.739 (1.108) |
-| `set3a` | 0.077 | 7.66 | 0.214 (0.280) |
-| `set3b` | 0.079 | 8.59 | 0.080 (0.099) |
-| `set4a` | 0.081 | 0.96 | 0.187 (0.246) |
-| `set4b` | 0.128 | 0.74 | 0.963 (1.445) |
+| `set1`  | 0.053 | 0.06 | 0.164 (0.246) |
+| `set2`  | 0.070 | 8.17 | 0.079 (0.117) |
+| `set3a` | 0.077 | 7.66 | 0.202 (0.266) |
+| `set3b` | 0.079 | 8.59 | 0.077 (0.098) |
+| `set4a` | 0.081 | 0.96 | 0.192 (0.270) |
+| `set4b` | 0.128 | 0.74 | 0.954 (1.424) |
+
+Repeatability is evaluated at the **end of the last commanded motion**, not at
+the end of the recording. Trials keep recording during a trailing dwell in
+which the tip is still settling, and charging that creep to repeatability is
+misleading: measured at end-of-record, `set2` scores 0.739 mm purely because
+Exp 5 drifts 1.76 mm during a 10.6 s dwell after the robot has stopped. Settling
+is reported separately in [COMPARISON_REPORT.md](COMPARISON_REPORT.md) §4.
 
 The two plane-RMS columns quantify how strictly the *bending* phase is planar.
 Over the first 10 s of motion the tip stays within **0.081 mm RMS** of a single
@@ -191,17 +198,31 @@ that *do* match their command. The tip traces a very clean circular arc that
 simply stops short. Were the shortfall a fitting or segmentation failure, the
 residual would be large, not exceptionally small.
 
-The behaviour is consistent with **torsional windup / stick-slip in the inner
-tube**: rotation applied at the base is absorbed by torsion along the shaft
-instead of being delivered to the tip. Two observations support this reading:
+> **Superseded explanation.** An earlier draft of this report attributed the
+> shortfall to torsional windup in the inner tube. The cross-experiment
+> analysis in [COMPARISON_REPORT.md](COMPARISON_REPORT.md) rules that out as the
+> primary cause and identifies inner/outer tube kinematic coupling instead —
+> the loss scales with how far the *outer* tube is advanced. See §3 of that
+> report; the summary is reproduced below.
 
-- `set4a` is tightly clustered at 33–34 % (s.d. 0.7°), whereas `set4b` spans
-  36–45 % (s.d. 7.6°) — the largest trial-to-trial variability of any
-  measurement in the study, which is characteristic of frictional stick-slip
-  rather than a fixed scale error.
-- The same actuator achieves 97.7–99.5 % on the 360° commands, so the shortfall
-  is specific to the shorter 180° move, where a fixed windup angle consumes a
-  proportionally larger share of the commanded rotation.
+The loss is **not** a fixed angular offset. Torsional windup would subtract a
+roughly constant angle, and the 360° trials bound that constant at 2–8° — far
+too small to explain a 120° shortfall. Instead the fraction of commanded
+rotation reaching the tip falls monotonically with outer-tube extension:
+
+| Rotating tube | OTT at time of rotation | Commanded | Reaching the tip |
+| :-- | --: | --: | --: |
+| Inner (ITR), `set2`  | 0 mm    | 360° | 97.7 % |
+| Inner (ITR), `set4b` | 17.5 mm | 180° | 42.4 % |
+| Inner (ITR), `set4a` | 35 mm   | 180° | 33.4 % |
+| Outer (OTR), `set3a` | 35 mm   | 360° | 99.0 % |
+
+Inner-tube rotation is delivered almost perfectly with the outer tube retracted
+and is progressively lost as the outer tube is advanced, while **outer**-tube
+rotation is delivered in full at the same 35 mm extension. That asymmetry is
+the signature of concentric-tube curvature superposition — once the stiffer
+outer tube overlaps the inner one it dominates the resultant shape, so
+reorienting the inner tube moves the tip far less than commanded.
 
 Note that `set4b` also shows the largest positional repeatability spread
 (0.963 mm mean, 1.445 mm max) and the largest plane-fit residual (0.128 mm),
@@ -219,11 +240,12 @@ consistent with the same underlying mechanism.
    10 s of motion, at the tracker's noise floor.
 4. **Full-revolution rotation is accurate** — 1.7–8.2° error (97.7–99.5 % of
    command); best with both tubes co-rotating, worst with inner-only rotation.
-5. **Half-revolution inner-tube rotation fails to reach the tip** — only
-   33–45 % of the commanded 180° is delivered, with excellent circle-fit quality
-   confirming the measurement. This is the dominant error source in the study
-   and the clearest target for future work (torsional compensation or
-   closed-loop tip feedback).
+5. **Inner-tube rotation is lost as the outer tube is advanced** — 97.7 % of
+   command reaches the tip at OTT = 0, but only 42.4 % at OTT = 17.5 mm and
+   33.4 % at OTT = 35 mm, while outer-tube rotation is delivered in full
+   (99.0 %) at the same extension. This is the dominant error source in the
+   study and the clearest target for future work: a kinematic model that
+   accounts for curvature superposition, or closed-loop tip feedback.
 
 ### Limitation
 
