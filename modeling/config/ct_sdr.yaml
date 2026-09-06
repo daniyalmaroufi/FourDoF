@@ -1,0 +1,63 @@
+# CT-SDR (Concentric Tube Steerable Drilling Robot) -- model parameters.
+#
+# Two pre-curved nitinol tubes nested inside one another, both running inside a
+# rigid stainless-steel guide tube.  The guide is what straightens the curved
+# sections while they are retracted, so in the model it is not a third elastic
+# tube: it defines the robot base s = 0 and imposes the straight, twist-only
+# transmission boundary condition described in ctr/model.py.
+#
+# Lengths here are in millimetres and angles in degrees (matching the robot's
+# CLI and config files); ctr/robot.py converts to SI on load.
+
+material:
+  # Superelastic (austenitic) nitinol.  E for binary NiTi in austenite is
+  # usually quoted between 40 and 83 GPa; 60 GPa is the value most commonly
+  # used in the concentric-tube-robot literature and is the default here.
+  # Re-fit it against measured tip positions before trusting absolute numbers.
+  youngs_modulus_gpa: 60.0
+  poisson_ratio: 0.33
+  density_kg_m3: 6450.0
+
+tubes:
+  # Outer tube: OD 3.6 mm, wall 0.25 mm  ->  ID 3.1 mm.
+  outer:
+    outer_diameter_mm: 3.6
+    wall_thickness_mm: 0.25
+    length_mm: 178.0
+    radius_of_curvature_mm: 50.0
+    # NOT given in the design description: how much of the distal end is
+    # pre-curved.  90 deg at R = 50 mm is 78.54 mm, which covers the largest
+    # advance used in the ICRA2027 tests (35 mm outer, 70 mm inner) with
+    # margin.  Set this to the measured value for quantitative work.
+    curved_length_mm: 78.54
+    # Arc-length coordinate of the tube's proximal end when its joint reads
+    # zero.  null means -length_mm, i.e. the joint origin is "tube tip flush
+    # with the end of the guide", so OTT/ITT read out deployed length directly.
+    base_offset_mm: null
+
+  # Inner tube: OD 2.6 mm, wall 0.2 mm  ->  ID 2.2 mm.
+  # Clearance to the outer tube's bore is (3.1 - 2.6)/2 = 0.25 mm per side;
+  # the model assumes this is small enough that both tubes share one backbone.
+  inner:
+    outer_diameter_mm: 2.6
+    wall_thickness_mm: 0.2
+    length_mm: 308.0
+    radius_of_curvature_mm: 50.0
+    curved_length_mm: 78.54
+    base_offset_mm: null
+
+guide:
+  # Rigid stainless-steel cannula the two nitinol tubes run inside.  Modelled
+  # as perfectly rigid and perfectly straight, so only its existence matters,
+  # not its stiffness.  Recorded here for documentation.
+  material: stainless_steel
+  rigid: true
+
+joints:
+  # Sign conventions matching dxl_control_4dof_cli.py / the ROS1 nodes.
+  # Positive translation advances the tube out of the guide; positive rotation
+  # is right-handed about the guide axis (+z).
+  ott_sign: 1.0   # outer tube translation
+  itt_sign: 1.0   # inner tube translation
+  otr_sign: 1.0   # outer tube rotation
+  itr_sign: 1.0   # inner tube rotation

@@ -19,6 +19,7 @@ independent ROS1 nodes — the **Rotational Controller** and the
 FourDoF/
 ├── dxl_control_4dof_cli.py       # interactive CLI for all 4 joints (run this)
 ├── dxl_control_length_1dof.py    # older single-DOF reference example (unrelated to the 4-DOF stack)
+├── modeling/                     # Cosserat-rod mechanics model of the tubes (no ROS/hardware)
 └── fourdof/                      # the ROS1 catkin package
     ├── fourdof/                  # control module (rospy-independent classes + thin ROS1 node wrappers)
     ├── libs/dynamixel_easy_sdk/  # vendored ROBOTIS Dynamixel SDK wrapper (Connector/Motor/OperatingMode)
@@ -29,6 +30,24 @@ FourDoF/
 ```
 
 See [fourdof/README.md](fourdof/README.md) for package-level details.
+
+## Modeling
+
+[`modeling/`](modeling/) holds a geometrically exact Cosserat-rod model of the
+two nitinol tubes (Rucker, Jones & Webster III, *IEEE T-RO* 26(5):769–780,
+2010). It maps the same OTT/ITT/OTR/ITR joint values to the full backbone
+shape, including torsional windup and external tip loads — neither of which a
+constant-curvature model captures. It needs only numpy/scipy/pyyaml/matplotlib,
+with no ROS or hardware:
+
+```bash
+cd modeling
+python3 examples/plot_shape.py --ott 35 --itt 35 --itr 90
+python3 tests/test_ctr.py
+```
+
+See [modeling/README.md](modeling/README.md) for the equations, the assumptions
+and the two parameters you should measure before trusting absolute numbers.
 
 ## Prerequisites
 
