@@ -122,6 +122,7 @@ class CTSDR:
                     youngs_modulus=E,
                     poisson_ratio=nu,
                     density=rho,
+                    tip_straight_length=float(t.get("tip_straight_length_mm", 0.0)) * 1e-3,
                 )
             )
             off = t.get("base_offset_mm")
@@ -172,10 +173,12 @@ class CTSDR:
             end = betas[i] + t.length
             if end > t.length + 1e-9:
                 raise ValueError(f"{t.name} tube: commanded past its full length")
-            if end > t.curved_length + 1e-9:
+            if end > t.deployable_length + 1e-9:
                 raise ValueError(
                     f"{t.name} tube: deployed {end * 1e3:.1f} mm exceeds its "
-                    f"{t.curved_length * 1e3:.1f} mm pre-curved section, so part of the "
+                    f"{t.deployable_length * 1e3:.1f} mm shaped section "
+                    f"({t.curved_length * 1e3:.1f} mm curved + "
+                    f"{t.tip_straight_length * 1e3:.1f} mm tip lead-in), so part of the "
                     "straight proximal section has emerged"
                 )
         if np.max(betas + np.array([t.length for t in self.tubes])) <= 0.0:

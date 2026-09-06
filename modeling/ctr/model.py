@@ -197,6 +197,18 @@ class Solution:
         """Material frame ``R_i`` of tube ``i`` at sample ``k``."""
         return self.R[k] @ rot_z(self.theta[k, i])
 
+    def position_at(self, s_query: float) -> np.ndarray:
+        """Backbone position at arc length ``s_query`` [m], linearly interpolated.
+
+        Needed to track a tube tip that is not the distal-most point: while the
+        outer tube is advanced ahead of the inner one, the inner tube's tip --
+        which is where the drill bit and the tracker marker sit -- lies part way
+        along the backbone, not at its end.  Queries outside the deployed range
+        clamp to the ends.
+        """
+        s = float(np.clip(s_query, self.s[0], self.s[-1]))
+        return np.array([np.interp(s, self.s, self.p[:, k]) for k in range(3)])
+
 
 class CosseratModel:
     """Geometrically exact model for a set of concentric tubes.
@@ -241,8 +253,8 @@ class CosseratModel:
 
         Returns ``(segments, L)`` with each segment ``(s_start, s_end,
         active_tube_indices)``.  Breakpoints are placed at every tube start,
-        every tube end and every straight-to-curved transition, because the
-        right-hand side is only piecewise smooth across those.
+        every tube end and both straight-to-curved transitions of every tube,
+        because the right-hand side is only piecewise smooth across those.
         """
         betas = np.asarray(betas, dtype=float)
         if betas.shape != (self.n_tubes,):
@@ -264,7 +276,8 @@ class CosseratModel:
 
         knots = [0.0, L]
         for i, t in enumerate(self.tubes):
-            for x in (betas[i], betas[i] + t.straight_length, ends[i]):
+            for x in (betas[i], betas[i] + t.straight_length,
+                      betas[i] + t.curve_end, ends[i]):
                 if KNOT_TOL < x < L - KNOT_TOL:
                     knots.append(float(x))
         knots.sort()

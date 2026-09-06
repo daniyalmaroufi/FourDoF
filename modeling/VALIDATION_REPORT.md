@@ -1,0 +1,337 @@
+# Validating the Cosserat model against the ICRA2027 NDI trials
+
+**What was done:** the geometrically exact Cosserat model in [`modeling/ctr/`](ctr/)
+was run through the exact commanded joint sequence of every free-space
+experiment in [`ICRA2027/exp_info.md`](../ICRA2027/exp_info.md) and compared
+against the NDI tip recordings — 6 sets × 3 trials = **18 trials, 47 782
+samples**. Exp 4 is excluded (logged as "Random Exp — don't count").
+
+Per-experiment figures are in [`figures/validation/`](figures/validation/), one
+per experiment number (`exp1.png` … `exp19.png`), plus four summary figures and
+[`metrics.csv`](figures/validation/metrics.csv) with every number below.
+
+```bash
+cd modeling
+python3 validation/run_validation.py            # all 18 trials + summaries
+python3 validation/run_validation.py --fit      # re-identify geometry first
+python3 validation/windup_vs_superposition.py   # the 180° attribution
+```
+
+---
+
+## Headline results
+
+1. **The model reproduces the measured tip paths to ~1.4 mm RMS** across five of
+   six sets, and to **0.70 mm** on the cleanest set — over a 34 mm advance *and*
+   a full 360° revolution. Trial-to-trial repeatability in the existing
+   evaluation is 0.08–0.95 mm, so the model is running within about 2× the
+   measurement's own noise floor.
+2. **The 180° rotation shortfall is torsional windup, not curvature
+   superposition.** This *reverses* the conclusion in
+   [`EVALUATION_REPORT.md`](../ICRA2027/EVALUATION_REPORT.md) §3.5. See §3.
+3. **The commanded rotation sense is inverted** relative to a right-handed
+   convention about the guide axis. Wrong-way round, set2 scores 16.1 mm; the
+   right way round, 1.5 mm. See §4.
+4. **~2.9 mm of inner tube is already deployed at ITT = 0.** Identifying it took
+   set2 from 4.00 mm to 0.70 mm RMS. See §5.
+5. **The tubes are not the 50 mm arcs the design description specifies** — the
+   inner tube measures ~39–42 mm, and the two-tube assembly's curvature *tapers*
+   along the advance in a way no constant-curvature tube pair can produce. See §6.
+6. **Translation undershoots by 0.66 mm on every one of 8 segments**, and the
+   model cannot explain it — it predicts the commanded length exactly. See §7.
+
+---
+
+## 1. Method
+
+Model and measurement live in unrelated frames — the NDI tracker was never
+registered to the robot's guide — so shapes are compared after a **rigid
+(rotation + translation, no scaling) Kabsch alignment of the whole trial**.
+What survives that alignment is real shape disagreement. Alongside it we report
+**frame-invariant scalars** (path length, fitted arc radius, swept angle) that
+need no registration and so cannot be flattered by it.
+
+Correspondence is by *fraction of each commanded step completed*, not global arc
+length: the steps are separated by operator pauses of arbitrary length, and one
+global parameter would smear a disagreement in one step across the others.
+
+Data conditioning (spike rejection, smoothing, motion segmentation) is
+**imported from `ICRA2027/ndi_tip_analysis.py`** rather than reimplemented, so
+the model is scored against exactly the traces the existing evaluation used.
+
+**Geometry was identified from translation segments only.** Everything about
+rotation — which is where the interesting physics is — is therefore an
+out-of-sample prediction, not a fit.
+
+### What the tracker measures
+
+The marker is on the **inner tube's tip**: in set2 the outer tube never moves and
+the tracker still records a 34 mm advance. That matters, because while the outer
+tube is advanced ahead of the inner one, the inner tip lies *part way along* the
+backbone, not at its distal end. Model paths are sampled with
+`Solution.position_at(inner_deployed_length)` accordingly.
+
+---
+
+## 2. Agreement per experiment set
+
+Whole-trial registration RMS, mean of the 3 trials (`summary_error.png`):
+
+| Set | Commanded sequence | As specified | Identified | Rotation step |
+| :-- | :-- | --: | --: | :-- |
+| `set1`  | T 20 mm                        | 0.18 mm | **0.18 mm** | — |
+| `set2`  | T 35 mm → ITR 360°             | 4.00 mm | **0.70 mm** | inner tube alone |
+| `set3a` | T 35 mm → OTR 360°             | 14.52 mm | **15.34 mm** | outer tube only |
+| `set3b` | T 35 mm → OTR+ITR 360°         | 4.31 mm | **2.76 mm** | co-rotation |
+| `set4a` | T 35 mm → ITR 180° → T 35 mm   | 1.89 mm | **2.28 mm** | inner vs overlapped outer |
+| `set4b` | T 17.5 mm → ITR 180° → T 17.5 mm | 1.23 mm | **1.19 mm** | same, half overlap |
+| **All** | | 4.35 mm | 3.74 mm | |
+| **Excluding `set3a`** | | | **1.42 mm** | |
+
+`set2` (`exp5.png`) is the strongest single result: the model tracks a 34 mm
+advance followed by a complete revolution with **0.70 mm** RMS, matching the
+rotation circle radius to 16.8 vs 16.9 mm and the advance arc radius to 39.5 vs
+40.1 mm.
+
+**`set3a` is the one clear failure**, and it fails in one specific way: the model
+predicts 302° of tip sweep where 356° was measured. The deviation trace in
+`exp8.png` oscillates twice per revolution — the signature of a *phase* error on
+a circle of about the right size, not a shape error. The model is over-predicting
+how much of the outer tube's rotation is lost.
+
+---
+
+## 3. The 180° shortfall is windup, not superposition
+
+`EVALUATION_REPORT.md` §3.5 reports that inner-tube rotation reaches the tip
+almost perfectly at OTT = 0 (97.7 %) but only 33–42 % once the outer tube is
+advanced, and attributes this to curvature superposition, explicitly ruling out
+torsional windup on the grounds that the 360° trials bound windup at 2–8°.
+
+The model contains both mechanisms, so it can separate them rather than argue
+from bounds. Running it twice — once as built, once with `GJ → ∞` so that every
+commanded degree arrives at the deployed section and only superposition can
+act (`windup_vs_superposition.png`):
+
+| Set | Rotates | OTT | Cmd | Measured | Model (full) | Model (torsionally rigid) |
+| :-- | :-- | --: | --: | --: | --: | --: |
+| `set2`  | ITR | 0 mm    | 360° | 351.8° (97.7 %) | 360.0° (100 %) | 360.0° (100 %) |
+| `set3a` | OTR | 35 mm   | 360° | 356.3° (99.0 %) | 301.7° (83.8 %) | 360.0° (100 %) |
+| `set3b` | both | 35 mm  | 360° | 358.3° (99.5 %) | 360.0° (100 %) | 360.0° (100 %) |
+| `set4b` | ITR | 17.5 mm | 180° | 76.2° (42.3 %) | 56.5° (31.4 %) | 179.5° (**99.7 %**) |
+| `set4a` | ITR | 35 mm   | 180° | 60.0° (33.3 %) | 36.2° (**20.1 %**) | 178.1° (**98.9 %**) |
+
+**With the tubes made torsionally rigid, `set4a` delivers 98.9 % of the
+commanded rotation.** Curvature superposition accounts for roughly **1
+percentage point** of the loss; torsional compliance accounts for the rest. The
+full model predicts 20 % where 33 % was measured — the right regime and the
+right mechanism, from geometry and mechanics alone with nothing fitted to
+rotation data. The rigid model's 99 % is not close to anything measured.
+
+The mechanism is explicit in the model's state: at `set4a`'s final pose only
+**−26.8° of the −180° commanded relative roll** has reached the deployed
+overlap. The other 153° is wound into the inner tube's ~273 mm of torsionally
+free transmission behind the guide.
+
+**Why the earlier bound failed.** Windup is not a constant angular offset — it
+is driven by the torque the two tubes exert on each other, which is *zero* when
+they are aligned or co-rotating, and zero when only one tube is deployed. So the
+360° trials genuinely have near-zero windup (`set3b`: 0.0° of relative roll
+between the tubes throughout; `set2`: only one tube deployed, no coupling at
+all), and that tells you nothing about the 180° trials, where the tubes are
+driven into strong opposition. The 2–8° bound was measured on exactly the
+configurations where the mechanism switches off.
+
+**The model over-predicts windup** in every case where it acts (20 % vs 33 % on
+`set4a`, 31 % vs 42 % on `set4b`, 84 % vs 99 % on `set3a`). That is the expected
+direction of error: the model treats the whole retracted length as
+torsionally free and frictionless, whereas the real tubes are supported by, and
+rub against, each other, the guide and the carriages.
+
+---
+
+## 4. The rotation sense is inverted
+
+Modelled with positive OTR/ITR as right-handed about +z, the model walks set2's
+rotation circle **backwards**: the whole-trial residual is 16.1 mm, roughly
+twice the circle's 16.8 mm radius, which is what you get from a circle traversed
+the wrong way. Reversing it gives 1.5 mm. A rigid registration uses proper
+rotations only, so it *cannot* absorb a handedness error — this is a real
+chirality mismatch.
+
+All four sign combinations, whole-trial RMS (mm):
+
+| OTR, ITR | `set2` | `set3a` | `set3b` | `set4a` |
+| :-- | --: | --: | --: | --: |
+| +1, +1 | 16.10 | **3.71** | 15.51 | **2.08** |
+| +1, −1 | **1.56** | **3.71** | 15.68 | 2.21 |
+| −1, +1 | 16.10 | 15.36 | 4.99 | **2.08** |
+| −1, −1 | **1.56** | 15.36 | **2.78** | 2.21 |
+
+`set2` (a single tube — unambiguous) and `set3b` (a pure rigid roll — kinematically
+trivial) independently both demand a **negative** sense, by 10× and 5×. That is
+now set in [`config/ct_sdr.yaml`](config/ct_sdr.yaml) and locked by a test.
+
+`set3a` prefers the opposite sense for OTR, which is the same failure as §2 —
+but `set3a` is also the one configuration where the model's physics already
+disagrees, so it is the contaminated test, and reversing OTR alone would
+contradict `set3b`.
+
+⚠️ **Two causes are indistinguishable from this data:** the 1:40 worm gear
+reversing the commanded sense, or the NDI recordings being in a left-handed
+frame. Check the worm-gear direction against a physical rotation before relying
+on the absolute sense.
+
+---
+
+## 5. The inner tube is ~2.9 mm deployed at ITT = 0
+
+The advances constrain the tubes' *curvature* but are blind to how much tube is
+already out — advancing along a uniform arc traces the same circle wherever you
+start. The rotation circles are the opposite: their radius is the tip's distance
+from the guide axis, which depends on total deployed length.
+
+Solving `set2`'s measured 16.83 mm rotation circle for the offset gives
+**2.90 mm**, and that same number then reproduces, without further adjustment:
+
+| Quantity | Measured | Model |
+| :-- | --: | --: |
+| Advance path length | 34.40 mm | 34.39 mm |
+| Advance chord | 33.40 mm | 33.33 mm |
+| Advance arc radius | 39.5 mm | 39.5 mm |
+| Rotation circle radius | 16.83 mm | 16.83 mm |
+
+The outer tube's offset is **not** identifiable here: once it covers the inner
+tube's tip, advancing it further changes nothing the tracker can see. It is
+pinned to zero because `set2` runs at OTT = 0 and is the calibration case — a
+non-zero value leaves a stub of outer tube stiffening the first few millimetres
+there and pulls that circle to 15.06 mm.
+
+---
+
+## 6. The tubes are not 50 mm arcs
+
+Fitting circles to nested sub-arcs *within* each advance (so the trend is
+within-trial, free of any cross-session confound) gives the tip path's mean
+radius as a function of how far the tubes have advanced — `curvature_profile.png`.
+A tube of uniform curvature gives a flat line.
+
+**Inner tube alone** (`set2` T1, `set4a` T3, `set4b` T3 — 9 segments): roughly
+flat at **39–42 mm**, against the 50 mm specified. The identified 39.5 mm
+reproduces set2 to 0.70 mm RMS, so this is well determined.
+
+**Both tubes advancing** (15 segments): the measured radius **rises from ~36 mm
+at 12 mm of advance to ~61 mm at 30 mm** — the assembly starts as curved as the
+inner tube alone and progressively straightens. This is highly repeatable across
+9 trials in three different sets, and **no constant-curvature pair of tubes
+reproduces it**: the best fit over (R_outer, tip lead-in, R_inner) improves the
+turn-angle residual only from 5.25° to 4.78°, and the fitted curves in
+`curvature_profile.png` are flat where the data slopes.
+
+Candidate explanations, none of which the current data can separate:
+
+* the outer tube's pre-curved section is not uniform, or does not start at its tip;
+* the 0.25 mm-per-side clearance between the tubes lets them lag each other,
+  which the zero-clearance model cannot represent;
+* OTT and ITT did not advance the way the log implies (see §8).
+
+Two further internal tensions worth knowing about:
+
+* `set1` (OTT 20, ITT 20) has a curvature profile essentially **indistinguishable
+  from inner-tube-only deployment**, unlike `set3a`/`3b`/`4a`, which all show
+  clear outer-tube straightening at the same advance.
+* For `set3b`, the advance path's own shape implies the tip ends ~11 mm off the
+  guide axis, but its rotation circle measures 17.1 mm. Those two measurements
+  of the same pose are not consistent with any rigid configuration, which points
+  at an un-calibrated offset between the tracker marker and the tube tip.
+
+**A tube of `tip_straight_length` (a straight lead-in between the curved section
+and the distal tip) was added to the model** while chasing this, since the
+measured curvature sits *proximal* — near the guide — with the distal end nearly
+straight. It fits `set3a`'s profile well (3.1 mm vs 8–25 mm for the
+alternatives) but contradicts `set1`, so it is **not** claimed as the
+explanation. The capability is in `ctr/tube.py` with tests; the shipped config
+leaves it at zero.
+
+---
+
+## 7. What the model does *not* explain
+
+* **Translation undershoot.** All 8 translation segments undershoot the command,
+  by 0.66 mm on average (`set1` 19.45 vs 20, `set2` 34.48 vs 35, `set4b` T3
+  16.41 vs 17.5). The model predicts the commanded length *exactly* — it is
+  inextensible with a rigid transmission. This is a lead-screw scale factor,
+  backlash or axial compliance, and it is calibratable.
+* **The 8.2° lost in `set2`'s revolution.** Only one tube is deployed, so the
+  model predicts exactly 360° with zero coupling. The 2.3 % shortfall is
+  transmission backlash or tube-to-guide friction — outside a frictionless
+  elastostatic model.
+* **`set3a`** (§2, §3).
+
+---
+
+## 8. What should be done better
+
+Ordered by how much they would improve the next round.
+
+1. **Log joint positions alongside the NDI stream.** `ndi_tip_recorder.py`
+   records `stamp, elapsed, x, y, z, frame_id` and nothing else. Almost every
+   ambiguity in this report — whether OTT and ITT moved together or in sequence,
+   whether the commanded rotation actually happened, where the home positions
+   were — would be settled by a synchronised joint channel. The ROS nodes already
+   publish `JointState`; the recorder just doesn't subscribe. **Highest payoff
+   per line of code in this entire analysis.**
+
+2. **Pivot-calibrate the marker and register the NDI frame to the guide.**
+   Everything here needed a rigid Procrustes fit, which absorbs real error, and
+   §6 shows evidence of an uncalibrated marker offset. A one-time registration
+   turns "shape agreement" into *absolute accuracy*, which is what a drilling
+   robot actually needs to report.
+
+3. **Measure the tubes' free shape directly** — photograph them against a grid,
+   or CT them. §6 is the largest unresolved discrepancy and one afternoon with a
+   camera would close it. Record the curved length and where the curve starts,
+   not just the radius.
+
+4. **Verify the rotation sense physically** (§4) and record the tubes' home
+   offsets (§5) as part of the setup procedure.
+
+5. **Resolve `set3a` vs `set3b`.** They demand opposite outer-tube rotation
+   senses. Re-run both with joint logging.
+
+6. **Record the drilling experiments.** `exp_info.md` lists three drill runs with
+   no CSVs. The model's externally-loaded branch — the whole point of using this
+   paper rather than a constant-curvature model — is completely untested against
+   hardware. Even a single instrumented run with a force reading would exercise it.
+
+7. **Sweep rotation in small steps with dwells, and sweep back.** The model
+   predicts snap-through and hysteresis (see [README](README.md) and
+   `figures/workspace_itr_sweep.png`). Continuous 360° sweeps at one speed
+   cannot see either. Step ITR in ~15° increments with a 2 s dwell, then reverse:
+   if the return path differs from the outbound one, that is the hysteresis, and
+   it bounds the friction the model currently omits.
+
+8. **Add friction to the transmission model.** §3 shows the model over-predicts
+   windup consistently, in the direction that unmodelled friction and support
+   would explain. A single Coulomb-friction-per-unit-length parameter fitted to
+   `set4a`/`set4b` would likely close most of the remaining gap — and it is the
+   parameter that matters for a robot whose dominant error is windup.
+
+9. **Calibrate the translation scale factor** (§7) — 24/24 one-sided undershoot
+   is free accuracy.
+
+---
+
+## Files
+
+| Path | What |
+| :-- | :-- |
+| `validation/ndi_experiments.py` | Commanded sequences, trial loading, model trajectories, registration |
+| `validation/run_validation.py` | Per-trial comparison, geometry identification, figures, `metrics.csv` |
+| `validation/windup_vs_superposition.py` | The §3 attribution |
+| `figures/validation/exp*.png` | One figure per experiment number (18) |
+| `figures/validation/summary_error.png` | §2 |
+| `figures/validation/windup_vs_superposition.png` | §3 |
+| `figures/validation/curvature_profile.png` | §6 |
+| `figures/validation/rotation_delivery.png` | Commanded vs delivered rotation |
+| `figures/validation/metrics.csv` | Every number above |

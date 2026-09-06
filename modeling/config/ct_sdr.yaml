@@ -55,9 +55,24 @@ guide:
 
 joints:
   # Sign conventions matching dxl_control_4dof_cli.py / the ROS1 nodes.
-  # Positive translation advances the tube out of the guide; positive rotation
-  # is right-handed about the guide axis (+z).
+  # Positive translation advances the tube out of the guide.
   ott_sign: 1.0   # outer tube translation
   itt_sign: 1.0   # inner tube translation
-  otr_sign: 1.0   # outer tube rotation
-  itr_sign: 1.0   # inner tube rotation
+
+  # Rotation: NEGATIVE, i.e. a positive OTR/ITR command turns the tube
+  # LEFT-handed about the guide axis (+z), not right-handed.
+  #
+  # This is not a guess.  With the right-handed convention the model traces the
+  # set2 rotation circle the wrong way round and the whole-trial registration
+  # residual is 16.1 mm -- about twice the circle's radius, the signature of a
+  # circle walked backwards.  Flipping it gives 1.5 mm.  A rigid registration
+  # uses proper rotations only, so it cannot absorb a handedness error: this is
+  # a real chirality mismatch, not a frame ambiguity.  See
+  # modeling/VALIDATION_REPORT.md.
+  #
+  # Two things could produce it and this dataset cannot separate them: the 1:40
+  # worm gear reversing the commanded sense, or the NDI recordings being in a
+  # left-handed frame.  Check the worm-gear direction against a physical
+  # rotation before relying on the absolute sense.
+  otr_sign: -1.0  # outer tube rotation
+  itr_sign: -1.0  # inner tube rotation

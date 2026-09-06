@@ -24,7 +24,9 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from ctr import CTSDR, CosseratModel, ExternalLoad, Joints, ShootingError, Tube  # noqa: E402
+from ctr import (  # noqa: E402
+    DEFAULT_CONFIG, CTSDR, CosseratModel, ExternalLoad, Joints, ShootingError, Tube,
+)
 from ctr.robot import INNER, OUTER  # noqa: E402
 
 E_NITINOL = 60e9
@@ -86,6 +88,67 @@ class TestTubeGeometry(unittest.TestCase):
             make_tube("bad", 2.0e-3, 1.5e-3, 0.1, 0.05, 0.05)  # wall > radius
         with self.assertRaises(ValueError):
             make_tube("bad", 3.0e-3, 0.2e-3, 0.1, 0.2, 0.05)  # curved > length
+
+
+class TestStraightTipLeadIn(unittest.TestCase):
+    """A straight run between the curved section and the tube's distal tip.
+
+    Identified from the NDI translation segments for this robot's outer tube
+    (see modeling/VALIDATION_REPORT.md).  Because the emerged part of a tube is
+    its distal part, a lead-in puts the curvature *proximal* -- near the guide
+    exit -- with the straight run beyond it, which is the opposite of a
+    distally-curved tube and is what the measured data shows.
+    """
+
+    def setUp(self):
+        self.kappa = 20.0
+        self.S = 0.010
+        self.tube = Tube(
+            name="leadin", outer_diameter=2.6e-3, inner_diameter=2.2e-3,
+            length=0.308, curved_length=0.07854, curvature=self.kappa,
+            youngs_modulus=E_NITINOL, poisson_ratio=NU, tip_straight_length=self.S,
+        )
+        self.model = CosseratModel([self.tube])
+
+    def _deploy(self, d):
+        return self.model.solve([-self.tube.length + d], [0.0])
+
+    def test_zero_lead_in_matches_the_plain_tube(self):
+        plain = make_tube("plain", 2.6e-3, 0.2e-3, 0.308, 0.07854, 0.050)
+        self.assertEqual(plain.tip_straight_length, 0.0)
+        self.assertAlmostEqual(plain.curve_end, plain.length, places=12)
+        self.assertAlmostEqual(plain.deployable_length, plain.curved_length, places=12)
+
+    def test_deploying_less_than_the_lead_in_stays_straight(self):
+        for d in (0.003, 0.006, 0.0099):
+            sol = self._deploy(d)
+            np.testing.assert_allclose(sol.tip_position, [0.0, 0.0, d], atol=1e-9)
+
+    def test_beyond_the_lead_in_it_is_an_arc_then_a_tangent(self):
+        d = 0.020
+        arc = d - self.S
+        sol = self._deploy(d)
+        end = analytic_arc(self.kappa, arc)
+        tangent = np.array([0.0, -np.sin(self.kappa * arc), np.cos(self.kappa * arc)])
+        np.testing.assert_allclose(sol.tip_position, end + self.S * tangent, atol=1e-9)
+
+    def test_the_curvature_sits_proximal_not_distal(self):
+        sol = self._deploy(0.030)
+        mag = np.linalg.norm(sol.u[:, :2], axis=1)
+        near = mag[sol.s < 0.030 - self.S - 1e-6]
+        far = mag[sol.s > 0.030 - self.S + 1e-6]
+        np.testing.assert_allclose(near, self.kappa, atol=1e-9)
+        np.testing.assert_allclose(far, 0.0, atol=1e-9)
+
+    def test_deployable_length_includes_the_lead_in(self):
+        self.assertAlmostEqual(self.tube.deployable_length, 0.07854 + self.S, places=12)
+
+    def test_lead_in_longer_than_the_tube_is_rejected(self):
+        with self.assertRaises(ValueError):
+            Tube(name="bad", outer_diameter=2.6e-3, inner_diameter=2.2e-3,
+                 length=0.05, curved_length=0.04, curvature=20.0,
+                 youngs_modulus=E_NITINOL, poisson_ratio=NU,
+                 tip_straight_length=0.02)
 
 
 class TestSingleTubeArc(unittest.TestCase):
@@ -206,12 +269,20 @@ class TestTorsion(unittest.TestCase):
         np.testing.assert_allclose(np.nan_to_num(sol.u_z), 0.0, atol=1e-9)
 
     def test_windup_lags_the_commanded_rotation(self):
-        """Elastic windup means the tip twists less than the actuator does."""
+        """Elastic windup means the tip twists less than the actuator does.
+
+        Compared as magnitudes: the shipped config carries a negative rotation
+        sense (identified from the NDI trials), so a positive ITR command
+        produces a negative roll.  What the physics fixes is that the roll
+        delivered is smaller than the roll commanded, not its handedness.
+        """
         for itr in (30.0, 60.0, 90.0):
             sol = self.robot.solve(Joints(ott=35, itt=35, itr=itr))
             tip_rel = np.degrees(sol.theta[-1, INNER] - sol.theta[-1, OUTER])
-            self.assertGreater(tip_rel, 0.0)
-            self.assertLess(tip_rel, itr)
+            commanded = np.degrees(sol.alphas[INNER] - sol.alphas[OUTER])
+            self.assertGreater(abs(tip_rel), 0.0)
+            self.assertLess(abs(tip_rel), abs(commanded))
+            self.assertEqual(np.sign(tip_rel), np.sign(commanded))
 
     def test_torsionally_rigid_limit_recovers_the_commanded_angle(self):
         """As GJ -> infinity the tubes stop winding and theta tracks alpha."""
@@ -488,6 +559,16 @@ class TestCTSDRConfig(unittest.TestCase):
         self.assertAlmostEqual(inner.wall_thickness * 1e3, 0.2, places=6)
         self.assertAlmostEqual(inner.length * 1e3, 308.0, places=6)
 
+    def test_shipped_rotation_sense_is_negative(self):
+        """Identified from the NDI trials, not a convention chosen for taste.
+
+        With a right-handed sense the model walks set2's rotation circle
+        backwards and scores 16.1 mm against 1.5 mm; a rigid registration uses
+        proper rotations only, so it cannot absorb that.  Locked in a test so a
+        future config edit has to confront the evidence.
+        """
+        np.testing.assert_allclose(self.robot.signs, [1.0, 1.0, -1.0, -1.0])
+
     def test_radius_of_curvature_is_50_mm(self):
         for t in self.robot.tubes:
             self.assertAlmostEqual(1.0 / t.curvature * 1e3, 50.0, places=6)
@@ -508,6 +589,60 @@ class TestCTSDRConfig(unittest.TestCase):
     def test_translation_maps_one_to_one_to_deployed_length(self):
         d = self.robot.deployed_lengths(Joints(ott=20, itt=35))
         np.testing.assert_allclose(d * 1e3, [20.0, 35.0], atol=1e-9)
+
+    def test_home_offset_shifts_deployment_without_changing_the_traced_arc(self):
+        """A non-zero home offset adds deployed length but keeps the same circle.
+
+        The NDI validation identifies ~2.9 mm of inner tube already protruding
+        at ITT = 0.  It has to move the tip along the tube's arc without
+        changing that arc's radius, which is exactly why the advances are blind
+        to it and the rotation circles are not.
+        """
+        outer, inner = self.robot.tubes
+        shifted = CTSDR(outer, inner,
+                        base_offsets=[-outer.length + 2.9e-3,
+                                      -inner.length + 2.9e-3])
+        np.testing.assert_allclose(
+            shifted.deployed_lengths(Joints(ott=20, itt=20)) * 1e3, [22.9, 22.9],
+            atol=1e-9)
+
+        d = 0.020
+        base = self.robot.solve(Joints(ott=20, itt=20))
+        moved = shifted.solve(Joints(ott=20, itt=20))
+        # Same circle: both tips sit one radius from the same centre.
+        roc = 1.0 / inner.curvature
+        for sol in (base, moved):
+            self.assertAlmostEqual(
+                np.linalg.norm(sol.tip_position - np.array([0.0, -roc, 0.0])),
+                roc, delta=1e-9)
+        # But further along it, by the offset.
+        self.assertAlmostEqual(moved.arc_length - base.arc_length, 2.9e-3, places=9)
+
+    def test_config_base_offset_is_read(self):
+        import tempfile
+
+        import yaml as _yaml
+        with open(DEFAULT_CONFIG) as fh:
+            cfg = _yaml.safe_load(fh)
+        cfg["tubes"]["inner"]["base_offset_mm"] = -300.0
+        with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as fh:
+            _yaml.safe_dump(cfg, fh)
+            path = fh.name
+        try:
+            robot = CTSDR.from_yaml(path)
+            self.assertAlmostEqual(robot.base_offsets[INNER], -0.300, places=9)
+            np.testing.assert_allclose(
+                robot.deployed_lengths(Joints(itt=10))[INNER] * 1e3, 18.0, atol=1e-9)
+        finally:
+            os.unlink(path)
+
+    def test_rotation_signs_are_applied(self):
+        """config/ct_sdr.yaml carries a negative rotation sense; honour it."""
+        outer, inner = self.robot.tubes
+        flipped = CTSDR(outer, inner, base_offsets=self.robot.base_offsets,
+                        signs=(1.0, 1.0, -1.0, -1.0))
+        _, alphas = flipped.joints_to_model(Joints(ott=35, itt=35, otr=30, itr=90))
+        np.testing.assert_allclose(np.degrees(alphas), [-30.0, -90.0], atol=1e-9)
 
     def test_check_rejects_over_deployment(self):
         with self.assertRaises(ValueError):
@@ -604,9 +739,15 @@ class TestExperimentConfigurations(unittest.TestCase):
             )
 
     def test_common_rotation_of_both_tubes_rotates_the_whole_shape(self):
+        """Co-rotating both tubes is a rigid roll about the guide axis.
+
+        This is the kinematics `set3b` exercises, and the one that pins the
+        rotation sign in the NDI validation, so the expected roll is taken from
+        the configured sense rather than assumed right-handed.
+        """
         base = self.robot.solve(Joints(ott=35, itt=35, itr=90))
-        phi = np.radians(70.0)
         rolled = self.robot.solve(Joints(ott=35, itt=35, otr=70, itr=90 + 70))
+        phi = float(rolled.alphas[OUTER] - base.alphas[OUTER])
         c, s = np.cos(phi), np.sin(phi)
         Rz = np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])
         np.testing.assert_allclose(rolled.tip_position, Rz @ base.tip_position, atol=1e-8)

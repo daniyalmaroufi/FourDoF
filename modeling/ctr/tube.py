@@ -42,8 +42,14 @@ class Tube:
         Total tube length [m], including the proximal part that stays inside
         the actuation unit / rigid guide.
     curved_length
-        Length of the distal pre-curved portion [m].  The remaining
-        ``length - curved_length`` at the proximal end is straight.
+        Length of the pre-curved portion [m].
+    tip_straight_length
+        Length of a straight lead-in between the curved portion and the tube's
+        distal tip [m], zero by default.  With ``0`` the curve runs all the way
+        to the tip; with ``S > 0`` the tube is straight over its distal ``S``,
+        curved over the ``curved_length`` proximal to that, and straight again
+        over whatever remains.  The NDI validation identifies a non-zero value
+        for the outer tube of this robot -- see ``modeling/VALIDATION_REPORT.md``.
     curvature
         Pre-curvature ``kappa`` of the curved portion [1/m] (the reciprocal of
         the radius of curvature).
@@ -66,6 +72,7 @@ class Tube:
     youngs_modulus: float
     poisson_ratio: float
     density: float = 6450.0  # nitinol
+    tip_straight_length: float = 0.0
 
     def __post_init__(self) -> None:
         if self.inner_diameter < 0.0 or self.outer_diameter <= self.inner_diameter:
@@ -80,6 +87,14 @@ class Tube:
                 f"{self.name}: curved_length {self.curved_length} must lie in "
                 f"[0, length={self.length}]"
             )
+        if self.tip_straight_length < 0.0:
+            raise ValueError(f"{self.name}: tip_straight_length must be non-negative")
+        if self.curved_length + self.tip_straight_length > self.length + 1e-12:
+            raise ValueError(
+                f"{self.name}: curved_length + tip_straight_length "
+                f"({self.curved_length + self.tip_straight_length}) exceeds "
+                f"length {self.length}"
+            )
         if self.curvature < 0.0:
             raise ValueError(f"{self.name}: curvature must be non-negative")
         if self.youngs_modulus <= 0.0:
@@ -90,9 +105,23 @@ class Tube:
     # -- derived geometry ---------------------------------------------------
 
     @property
+    def curve_end(self) -> float:
+        """Material coordinate where the curved portion ends [m]."""
+        return self.length - self.tip_straight_length
+
+    @property
     def straight_length(self) -> float:
-        """Length of the proximal straight portion [m]."""
-        return self.length - self.curved_length
+        """Material coordinate where the curved portion begins [m].
+
+        Named for the proximal straight run, which is what it measures when
+        there is no distal lead-in.
+        """
+        return self.curve_end - self.curved_length
+
+    @property
+    def deployable_length(self) -> float:
+        """Advance beyond which the proximal straight section emerges [m]."""
+        return self.curved_length + self.tip_straight_length
 
     @property
     def wall_thickness(self) -> float:
@@ -155,7 +184,7 @@ class Tube:
         outside ``[0, length]`` return zero so the caller never has to guard
         the segment edges.
         """
-        if self.straight_length <= sigma <= self.length:
+        if self.straight_length <= sigma <= self.curve_end:
             return self.curvature, 0.0
         return 0.0, 0.0
 

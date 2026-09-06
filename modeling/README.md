@@ -24,6 +24,31 @@ it captures that constant curvature cannot are both large on this robot:
   away and the robot jumps discontinuously to another one. The model finds it;
   `figures/workspace_itr_sweep.png` shows where.
 
+## Validated against the NDI trials
+
+The model has been run through the commanded joint sequence of all 18 free-space
+experiments in `ICRA2027/` and compared against the tip recordings —
+**[VALIDATION_REPORT.md](VALIDATION_REPORT.md)**, one figure per experiment
+number in [`figures/validation/`](figures/validation/).
+
+It reproduces the measured tip paths to **1.4 mm RMS** across five of six sets
+(0.70 mm on the cleanest), and it **settles the open question** in
+`ICRA2027/EVALUATION_REPORT.md` §3.5: the 180° rotation shortfall, where a
+commanded 180° moves the tip only 60°, is **torsional windup, not curvature
+superposition**. Making the tubes torsionally rigid in the model recovers 99 %
+of the commanded rotation, so superposition accounts for about 1 percentage
+point of a 67-point loss.
+
+Validation also corrected two things in this model's own configuration — the
+rotation sense is negative, and ~2.9 mm of inner tube is already deployed at
+ITT = 0 — and showed that the tubes are **not** the 50 mm arcs the design
+description specifies. Read §5–§7 of the report before trusting absolute numbers.
+
+```bash
+python3 validation/run_validation.py            # all 18 trials + summaries
+python3 validation/windup_vs_superposition.py   # the windup attribution
+```
+
 ## Layout
 
 ```
@@ -39,8 +64,13 @@ modeling/
 │   ├── plot_shape.py          # one configuration: shape, windup, material utilisation
 │   ├── plot_workspace.py      # ITR sweep: tip loci, windup and snap-through
 │   └── plot_drilling_load.py  # tip deviation under a drilling reaction wrench
-├── figures/                   # generated PNGs
-└── tests/test_ctr.py          # 67 verification tests
+├── validation/                # scoring the model against the ICRA2027 NDI data
+│   ├── ndi_experiments.py     # commanded sequences, trial loading, registration
+│   ├── run_validation.py      # per-trial comparison + geometry identification
+│   └── windup_vs_superposition.py
+├── figures/                   # generated PNGs (validation/ holds the comparison set)
+├── VALIDATION_REPORT.md       # what the measurements say about the model
+└── tests/test_ctr.py          # 77 verification tests
 ```
 
 ## Quick start
@@ -92,18 +122,31 @@ simple average.
 joints at zero the tube tips are flush with it, so `OTT` and `ITT` read out
 deployed length directly.
 
-### Two parameters you should check before trusting absolute numbers
+### Parameters you should check before trusting absolute numbers
 
-Everything above except these two comes straight from the design description.
+Everything in the table above comes straight from the design description, and
+the NDI validation says some of it does not match the hardware.
 
-1. **`curved_length_mm` (78.54 mm, a placeholder).** How much of each tube's
-   distal end is pre-curved was not specified. 78.54 mm is a 90° arc at
-   R = 50 mm, which covers the largest advance in the ICRA2027 tests (35 mm
-   outer, 70 mm inner) with margin. **Measure it and set it in
-   `config/ct_sdr.yaml`.** It does not affect any configuration whose
-   deployment stays inside the arc — `CTSDR.check()` raises if you leave it.
-2. **`youngs_modulus_gpa` (60 GPa).** See the next section — this is an
+1. **The 50 mm radius is not what the tubes measure.** The inner tube traces
+   **39–42 mm** in the recordings, and the two-tube assembly's curvature
+   *tapers* along an advance in a way no constant-curvature pair reproduces.
+   [VALIDATION_REPORT.md](VALIDATION_REPORT.md) §6. Measure the tubes' free
+   shape directly; the config still ships the nominal 50 mm.
+2. **`curved_length_mm` (78.54 mm, a placeholder).** How much of each tube is
+   pre-curved was not specified. 78.54 mm is a 90° arc at R = 50 mm, which
+   covers the largest advance in the ICRA2027 tests (35 mm outer, 70 mm inner)
+   with margin. It does not affect any configuration whose deployment stays
+   inside the arc — `CTSDR.check()` raises if you exceed it.
+3. **`base_offset_mm` (null = tips flush at zero).** The recordings put ~2.9 mm
+   of inner tube already out at ITT = 0 (§5). Left at null here because it is a
+   property of how the robot was homed that day, not of the tubes.
+4. **`youngs_modulus_gpa` (60 GPa).** See the next section — this is an
    *effective* modulus to be fitted, not a handbook value.
+5. **The rotation sense is negative** in the config, identified from the data
+   (§4) — a positive OTR/ITR command turns the tube left-handed about +z. Two
+   causes are indistinguishable from the trials: the 1:40 worm gear reversing
+   the sense, or the NDI frame being left-handed. Verify against a physical
+   rotation.
 
 ### Nitinol is not linear, and the model is
 
@@ -238,9 +281,13 @@ rather than against itself:
 
 ```
 $ python3 tests/test_ctr.py
-Ran 67 tests in 64s
+Ran 77 tests in 71s
 OK
 ```
+
+Separately, [VALIDATION_REPORT.md](VALIDATION_REPORT.md) scores the model
+against 18 hardware trials — verification (is the maths right?) and validation
+(does it describe the robot?) are different questions and both are answered.
 
 ## Known limitations
 
@@ -258,16 +305,15 @@ OK
 
 ## Comparing against the NDI measurements
 
-`plot_shape.py --csv out.csv` writes the modelled backbone in the same
-millimetre convention `ICRA2027/ndi_tip_analysis.py` uses, so a modelled shape
-can be laid over a measured one. The model's origin is the guide exit with +z
-along the guide axis; the NDI traces are referenced to each trial's first
-sample, so a rigid registration between the two frames is still needed before
-the comparison means anything.
+This is now done end-to-end — see [VALIDATION_REPORT.md](VALIDATION_REPORT.md)
+and `validation/`. `plot_shape.py --csv out.csv` additionally writes a single
+modelled backbone in the same millimetre convention
+`ICRA2027/ndi_tip_analysis.py` uses, for one-off overlays.
 
-The most informative comparison to run first is the windup panel of
-`plot_workspace.py` against the measured rotation in `exp_info.md`'s Exp 5–13
-(360° commanded rotations): if the measured tip rotation is much closer to the
-commanded value than the model says, the transmission is stiffer than modelled
-— most likely because the tubes are supported over more of their retracted
-length than the free-twist assumption allows.
+The prediction flagged here before the comparison was run — that the model
+would over-predict windup if the tubes are supported over more of their
+retracted length than the free-twist assumption allows — is what the data
+shows: the model over-predicts the loss on every configuration where windup
+acts (20 % vs 33 % delivered on `set4a`, 84 % vs 99 % on `set3a`). Adding
+friction to the transmission is the single highest-value model improvement
+outstanding.
