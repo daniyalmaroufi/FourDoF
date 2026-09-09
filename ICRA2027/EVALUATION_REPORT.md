@@ -108,8 +108,10 @@ number.
 
 *Tip trajectories for all six experiment sets, 3 trials overlaid per panel
 (line width tapered so coincident trials remain visible; ○ start, ■ end).
-The 360° rotation sets (b–d) trace the expected closed cone; the 180° sets
-(e, f) show a markedly smaller arc than commanded — see §3.5.*
+Panels are labelled by set key — (a) `set1`, (b) `set2`, (c) `set3a`,
+(d) `set3b`, (e) `set4a`, (f) `set4b` — whose full test names are given in the
+table in §1. The 360° rotation sets (b–d) trace the expected closed cone; the
+180° sets (e, f) show a markedly smaller arc than commanded — see §3.5.*
 
 ### 3.2 Repeatability
 

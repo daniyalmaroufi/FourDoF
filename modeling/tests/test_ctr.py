@@ -308,8 +308,9 @@ class TestTorsion(unittest.TestCase):
 
         # ...and the shape is then the constant-curvature superposition.
         ka, kb = model.k_b
+        ca, cb = stiff[0].curvature, stiff[1].curvature
         kappa = np.linalg.norm(
-            [ka * 20.0 + kb * 20.0 * np.cos(itr), kb * 20.0 * np.sin(itr)]
+            [ka * ca + kb * cb * np.cos(itr), kb * cb * np.sin(itr)]
         ) / (ka + kb)
         self.assertAlmostEqual(
             np.linalg.norm(sol.tip_position), np.linalg.norm(analytic_arc(kappa, d)),
@@ -475,7 +476,7 @@ class TestFriction(unittest.TestCase):
         docstring for why the sign does not survive a whole manoeuvre.
         """
         free = self.robot.solve(self.j)
-        rubbed = self.robot.solve(self.j, friction=self._friction())
+        rubbed = self.robot.solve(self.j, friction=self._friction(), guess=free.u_z0)
         both = ~np.isnan(free.theta[:, OUTER])
         last = np.flatnonzero(both)[-1]
 
@@ -488,7 +489,8 @@ class TestFriction(unittest.TestCase):
         free = self.robot.solve(self.j)
         prev = abs(free.theta[-1, INNER] - free.theta[-1, OUTER])
         for mu in (0.15, 0.35, 0.6):
-            sol = self.robot.solve(self.j, friction=self._friction(mu=mu))
+            sol = self.robot.solve(self.j, friction=self._friction(mu=mu),
+                                   guess=free.u_z0)
             now = abs(sol.theta[-1, INNER] - sol.theta[-1, OUTER])
             self.assertLessEqual(now, prev + 1e-9)
             prev = now
@@ -568,10 +570,19 @@ class TestMaterialLimits(unittest.TestCase):
         self.assertAlmostEqual(t.shear_stress(4.0), t.shear_modulus * 4.0 * 1.3e-3, places=6)
 
     def test_precurvature_alone_already_leaves_the_linear_branch(self):
-        """3.6 % surface strain: nitinol is on its superelastic plateau here."""
+        """The pre-curvature alone puts nitinol on its superelastic plateau.
+
+        Derived from the tube rather than hard-coded, so it survives a change
+        of measured radius: 3.2 % at the measured 57 mm, 3.6 % at the 50 mm the
+        design description gave.  Either way it is several times the ~1 % where
+        binary NiTi leaves its linear austenitic branch.
+        """
+        outer = self.robot.tubes[OUTER]
         sol = self.robot.solve(Joints(ott=35, itt=35, itr=0))
         rows = self.robot.material_limits(sol)
-        self.assertAlmostEqual(rows[OUTER]["bending_strain"], 0.036, delta=0.001)
+        expected = outer.curvature * 0.5 * outer.outer_diameter
+        self.assertAlmostEqual(rows[OUTER]["bending_strain"], expected, delta=1e-4)
+        self.assertGreater(rows[OUTER]["bending_strain"], 0.02)
 
     def test_torque_signs_are_preserved_and_opposite(self):
         sol = self.robot.solve(Joints(ott=35, itt=35, itr=90))
@@ -604,8 +615,19 @@ class TestSnapThrough(unittest.TestCase):
         self.assertLess(sol.residual_norm, 1e-6)
 
     def test_restart_is_reported_when_the_first_branch_fails(self):
-        prev = self.robot.solve(Joints(ott=10, itt=10, itr=190))
-        sol = self.robot.solve(Joints(ott=10, itt=10, itr=200), guess=prev.u_z0)
+        """Built on its own tightly-curved tubes, not the shipped config.
+
+        Whether a fold exists at a given pose depends on the tube curvature, so
+        pinning this to `config/ct_sdr.yaml` would make a solver test fail
+        whenever someone re-measures the tubes.  These 50 mm tubes fold between
+        ITR 190 deg and 200 deg at 10 mm of deployment.
+        """
+        tubes = [make_tube("outer", 3.6e-3, 0.25e-3, 0.178, 0.07854, 0.050),
+                 make_tube("inner", 2.6e-3, 0.2e-3, 0.308, 0.07854, 0.050)]
+        model = CosseratModel(tubes)
+        betas = [-tubes[0].length + 0.010, -tubes[1].length + 0.010]
+        prev = model.solve(betas, np.radians([0.0, 190.0]))
+        sol = model.solve(betas, np.radians([0.0, 200.0]), guess=prev.u_z0)
         self.assertGreater(sol.restarts, 0)
         self.assertLess(sol.residual_norm, 1e-6)
 

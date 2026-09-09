@@ -83,7 +83,14 @@ AS_SPECIFIED = dict(R_outer=57.0, S_outer=0.0, R_inner=57.0,
 #:   non-zero value would leave a stub of outer tube stiffening the first few
 #:   millimetres there and pull that set's rotation circle from 16.83 mm
 #:   (measured, and matched exactly) down to 15.06 mm.
-FITTED = dict(R_outer=53.63, S_outer=1.68, R_inner=39.51,
+#:
+#: Updated 2026-09-08: ``R_outer`` now takes the **measured** 57 mm rather than
+#: the 53.63 mm fit, since that fit was the badly-determined one and a direct
+#: measurement beats it.  Costs almost nothing -- 3.77 vs 3.74 mm mean RMS --
+#: and replaces a fitted number with a measured one.  ``R_inner`` stays at the
+#: data-identified 39.5 mm, which conflicts with the same measurement; §10 of
+#: VALIDATION_REPORT.md lays out the conflict and the experiment that settles it.
+FITTED = dict(R_outer=57.0, S_outer=0.0, R_inner=39.51,
               home_outer=0.0, home_inner=2.90)
 
 
@@ -310,7 +317,7 @@ def fig_trial(tr, es, cmp_spec, cmp_fit, path):
     ax_d = fig.add_subplot(gs[1, :2])
     prog = np.arange(len(best["dev"]))
     for cmp_, colour, lab in ((cmp_spec, vs.NEUTRAL, "measured tubes (R = 57 mm)"),
-                              (cmp_fit, vs.SERIES[2], "fitted geometry")):
+                              (cmp_fit, vs.SERIES[2], "identified (57 out / 39.5 in)")):
         if cmp_ is None:
             continue
         ax_d.plot(prog, cmp_["dev"], color=colour, lw=2.0, label=lab)
@@ -451,7 +458,7 @@ def fig_rotation_delivery(records, path):
     w = 0.26
     for off, vals, colour, lab in ((-w, meas, vs.SERIES[0], "measured"),
                                    (0.0, spec, vs.NEUTRAL, "model, measured R = 57 mm"),
-                                   (w, fit, vs.SERIES[1], "model, fitted geometry")):
+                                   (w, fit, vs.SERIES[1], "model, identified geometry")):
         ax_b.bar(xs + off, vals, width=w - 0.03, color=colour, label=lab, zorder=3)
     ax_b.axhline(100.0, color=vs.INK_2, lw=1.0, ls=(0, (4, 3)), zorder=2)
     ax_b.set_xticks(xs)
@@ -465,7 +472,7 @@ def fig_rotation_delivery(records, path):
     ax_s.scatter(spec, meas, s=54, color=vs.NEUTRAL, zorder=3,
                  edgecolors=vs.SURFACE, linewidths=1.2, label="measured R = 57 mm")
     ax_s.scatter(fit, meas, s=54, color=vs.SERIES[1], zorder=4,
-                 edgecolors=vs.SURFACE, linewidths=1.2, label="fitted geometry")
+                 edgecolors=vs.SURFACE, linewidths=1.2, label="identified (57 out / 39.5 in)")
     lim = [0, max(max(meas), max(spec), max(fit)) * 1.12 + 5]
     ax_s.plot(lim, lim, color=vs.INK_2, lw=1.0, ls=(0, (4, 3)), zorder=2)
     for x_, y_, lab in zip(fit, meas, labels):
@@ -496,7 +503,7 @@ def fig_summary_error(records, path):
     xs = np.arange(len(keys))
     w = 0.34
     for off, field, colour, lab in ((-w / 2, "spec_rms", vs.NEUTRAL, "measured tubes (R = 57 mm, no lead-in)"),
-                                    (w / 2, "fit_rms", vs.SERIES[1], "fitted geometry")):
+                                    (w / 2, "fit_rms", vs.SERIES[1], "identified (57 out / 39.5 in)")):
         vals, errs = [], []
         for k in keys:
             v = [r[field] for r in records if r["set"] == k and r["step"] == 1]
@@ -599,7 +606,7 @@ def main(argv=None):
     made = {
         "curvature_profile.png": fig_curvature_profile(
             trials, {"model, measured R = 57 mm": robot_spec,
-                     "model, fitted geometry": robot_fit},
+                     "model, identified geometry": robot_fit},
             os.path.join(args.out_dir, "curvature_profile.png")),
         "rotation_delivery.png": fig_rotation_delivery(
             records, os.path.join(args.out_dir, "rotation_delivery.png")),

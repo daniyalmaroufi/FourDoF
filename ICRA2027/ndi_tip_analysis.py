@@ -93,6 +93,34 @@ def apply_style():
     })
 
 
+# The two report-hero figures get their text set at a multiple of the base
+# sizes so they stay legible in a paper column or on a slide.  What matters for
+# apparent size is font_scale / canvas_scale: enlarging both equally just
+# renders the same figure bigger.  Overview is at 4.5/1.0 = 4.5x apparent,
+# summary at 3.0/2.0 = 1.5x.
+#
+# At 4.5x apparent, text only fits if the panels are wide relative to the
+# label lengths: a title fits when chars <= ~78 * panel_inches / (4.6 * scale
+# ratio), which is why the overview uses a 2-column grid with short titles and
+# one shared legend rather than 3 columns with six large per-panel legends.
+OVERVIEW_FONT_SCALE = 4.5
+OVERVIEW_CANVAS_SCALE = 1.0
+SUMMARY_FONT_SCALE = 3.0
+SUMMARY_CANVAS_SCALE = 2.0
+
+
+def _scaled_font_rc(scale):
+    """rcParams overrides scaling every text size by `scale`."""
+    return {
+        'font.size':        9 * scale,
+        'axes.labelsize':   9 * scale,
+        'axes.titlesize':  10 * scale,
+        'xtick.labelsize':  8 * scale,
+        'ytick.labelsize':  8 * scale,
+        'legend.fontsize':  8 * scale,
+    }
+
+
 # Wong (2011) colour-blind-safe palette; also separable in greyscale print.
 COLORS = ['#0072B2', '#D55E00', '#009E73']
 # Repeat trials often coincide to ~0.1 mm, so taper the widths: without this
@@ -627,45 +655,84 @@ def fig_kinematic_error(runs, es, out_dir):
     return _save(fig, out_dir, 'kinematic_error.jpg')
 
 
-def fig_overview_3d(all_results, out_dir, ncols=3):
+def fig_overview_3d(all_results, out_dir, ncols=2, fs=OVERVIEW_FONT_SCALE,
+                    cs=OVERVIEW_CANVAS_SCALE):
     """One 3D trajectory panel per experiment set, for the report figure."""
+    with plt.rc_context(_scaled_font_rc(fs)):
+        return _overview_3d_figure(all_results, out_dir, ncols, fs, cs)
+
+
+def _overview_3d_figure(all_results, out_dir, ncols, fs, cs):
     n = len(all_results)
     ncols = min(ncols, n)
     nrows = int(np.ceil(n / ncols))
-    fig = plt.figure(figsize=(4.6 * ncols, 4.5 * nrows))
+    # Panels are wide (7.4in) relative to their height so the enlarged titles
+    # and 3D axis labels have somewhere to go.
+    fig = plt.figure(figsize=(7.4 * ncols * cs, 7.6 * nrows * cs))
     for k, (es, runs) in enumerate(all_results):
         ax = fig.add_subplot(nrows, ncols, k + 1, projection='3d')
         for r, c, w in zip(runs, COLORS, LWS):
             P = r['Ps']
-            ax.plot(P[:, 0], P[:, 1], P[:, 2], color=c, lw=w, alpha=0.9,
-                    label=r['label'])
-            ax.scatter(*P[0],  marker='o', s=42, facecolors='white',
-                       edgecolors=c, linewidths=1.4, zorder=6)
-            ax.scatter(*P[-1], marker='s', s=38, color=c, zorder=6)
-        steps = '  +  '.join(
-            ('T %.4g mm' % v) if kind == 'T' else ('R %.4g%s' % (v, DEG))
+            ax.plot(P[:, 0], P[:, 1], P[:, 2], color=c, lw=w * 1.7 * cs,
+                    alpha=0.9, label=r['label'])
+            ax.scatter(*P[0],  marker='o', s=150 * cs, facecolors='white',
+                       edgecolors=c, linewidths=2.6 * cs, zorder=6)
+            ax.scatter(*P[-1], marker='s', s=135 * cs, color=c, zorder=6)
+        # Compact form ("T35mm" not "T 35 mm"): the three-step sequences are
+        # 26 chars spelled out, which collides across the column gutter.
+        steps = ' + '.join(
+            ('T%.4gmm' % v) if kind == 'T' else ('R%.4g%s' % (v, DEG))
             for kind, v in es['steps'])
-        ax.set_title('(%s) %s\n%s' % ('abcdef'[k], es['name'], steps),
-                     fontsize=8.5)
-        ax.set_xlabel(r'$\Delta X$ (mm)', fontsize=7.5)
-        ax.set_ylabel(r'$\Delta Y$ (mm)', fontsize=7.5)
-        ax.set_zlabel(r'$\Delta Z$ (mm)', fontsize=7.5)
+        # Short titles: the full set names do not fit at this text size, so the
+        # set key plus the trial range carries the identification and the
+        # descriptive names stay in the caption.
+        nums = [t[0].replace('Exp ', '') for t in es['trials']]
+        ax.set_title('(%s) %s   Exp %s-%s\n%s'
+                     % ('abcdef'[k], es['key'], nums[0], nums[-1], steps),
+                     fontsize=8.5 * fs, pad=12 * fs)
+        ax.set_xlabel(r'$\Delta X$ (mm)', fontsize=7.5 * fs, labelpad=8 * fs)
+        ax.set_ylabel(r'$\Delta Y$ (mm)', fontsize=7.5 * fs, labelpad=8 * fs)
+        ax.set_zlabel(r'$\Delta Z$ (mm)', fontsize=7.5 * fs, labelpad=7 * fs)
         _equal_3d(ax, np.vstack([r['Ps'] for r in runs]))
         ax.view_init(elev=22, azim=-58)
-        ax.tick_params(labelsize=6)
-        ax.legend(fontsize=6.5, loc='upper left')
-    fig.suptitle('Tip Trajectories, All Free-Space Experiment Sets '
-                 '(3 trials each)', fontsize=11.5, y=0.995)
-    fig.tight_layout(rect=(0, 0, 1, 0.96))
-    # tight_layout under-reserves space around 3D axis labels, so the next
-    # row's title lands on the previous row's tick labels.
-    fig.subplots_adjust(hspace=0.28)
+        # Three ticks per axis: more than that collides at this text size.
+        for axis in (ax.xaxis, ax.yaxis, ax.zaxis):
+            axis.set_major_locator(plt.MaxNLocator(3))
+        ax.tick_params(labelsize=6 * fs, pad=3 * fs)
+
+    # One shared legend rather than six: the colour order is the same in every
+    # panel, so it encodes trial index, and six enlarged legend boxes would
+    # cover the trajectories they describe.
+    handles = [Line2D([0], [0], color=c, lw=2.4 * fs,
+                      label='Trial %d' % (i + 1))
+               for i, c in enumerate(COLORS)]
+    handles += [Line2D([0], [0], ls='none', marker='o', ms=2.6 * fs, mfc='w',
+                       mec='k', mew=0.5 * fs, label='Start'),
+                Line2D([0], [0], ls='none', marker='s', ms=2.2 * fs,
+                       color='k', label='End')]
+    fig.legend(handles=handles, loc='lower center', ncol=5,
+               fontsize=7.5 * fs, frameon=False, bbox_to_anchor=(0.5, 0.006))
+    fig.suptitle('Tip Trajectories -- All Experiment Sets',
+                 fontsize=10.5 * fs, y=0.995)
+    # Bottom margin has to clear the last row's X/Y labels *and* the legend.
+    fig.tight_layout(rect=(0, 0.075, 1, 0.955))
+    # tight_layout cannot measure 3D axis labels -- they are drawn from the
+    # projection and extend outside the axes bbox -- so at this text size the
+    # inter-row gap has to be set by hand or each title lands on the row
+    # above's X/Y labels.
+    fig.subplots_adjust(hspace=0.95, wspace=0.20)
     return _save(fig, out_dir, 'overview_trajectories_3d.jpg')
 
 
-def fig_summary(all_results, out_dir):
+def fig_summary(all_results, out_dir, fs=SUMMARY_FONT_SCALE,
+                cs=SUMMARY_CANVAS_SCALE):
     """Absolute error per set, translation and rotation side by side."""
-    fig, axes = plt.subplots(1, 2, figsize=(10.4, 4.3))
+    with plt.rc_context(_scaled_font_rc(fs)):
+        return _summary_figure(all_results, out_dir, fs, cs)
+
+
+def _summary_figure(all_results, out_dir, fs, cs):
+    fig, axes = plt.subplots(1, 2, figsize=(10.4 * cs, 4.3 * cs))
     for ax, kind, unit, title in (
             (axes[0], 'T', 'Absolute Error (mm)', 'Translation Error'),
             (axes[1], 'R', 'Absolute Error (deg)', 'Rotation Error')):
@@ -681,19 +748,23 @@ def fig_summary(all_results, out_dir):
             ax.axis('off')
             continue
         idx = np.arange(len(names))
-        ax.bar(idx, means, 0.6, yerr=stds, capsize=4, color='#0072B2',
-               edgecolor='0.25', lw=0.6, error_kw=dict(lw=0.9, ecolor='0.2'))
+        ax.bar(idx, means, 0.6, yerr=stds, capsize=4 * cs, color='#0072B2',
+               edgecolor='0.25', lw=0.6 * cs,
+               error_kw=dict(lw=0.9 * cs, ecolor='0.2'))
         for i, (m, s) in enumerate(zip(means, stds)):
-            ax.annotate('%.2f' % m, xy=(i, m + s), xytext=(0, 4),
-                        textcoords='offset points', ha='center', fontsize=7.5)
+            ax.annotate('%.2f' % m, xy=(i, m + s), xytext=(0, 4 * fs),
+                        textcoords='offset points', ha='center',
+                        fontsize=7.5 * fs)
         ax.set_xticks(idx)
         ax.set_xticklabels(names)
         ax.set_ylabel(unit)
         ax.set_title(title)
+        # Headroom for the enlarged value labels above the error bars.
+        ax.set_ylim(0, max(m + s for m, s in zip(means, stds)) * 1.18)
         ax.grid(axis='x', visible=False)
         _finish(ax)
     fig.suptitle('Kinematic Accuracy Summary (mean $\\pm$ s.d. over trials)',
-                 fontsize=11)
+                 fontsize=11 * fs)
     fig.tight_layout()
     return _save(fig, out_dir, 'summary_kinematic_error.jpg')
 

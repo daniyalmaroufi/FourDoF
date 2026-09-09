@@ -22,7 +22,7 @@ python3 validation/friction_study.py            # friction, calibrated on set2
 
 ## Headline results
 
-1. **The model reproduces the measured tip paths to ~1.4 mm RMS** across five of
+1. **The model reproduces the measured tip paths to ~1.5 mm RMS** across five of
    six sets, and to **0.70 mm** on the cleanest set — over a 34 mm advance *and*
    a full 360° revolution. Trial-to-trial repeatability in the existing
    evaluation is 0.08–0.95 mm, so the model is running within about 2× the
@@ -35,9 +35,12 @@ python3 validation/friction_study.py            # friction, calibrated on set2
    right way round, 1.5 mm. See §4.
 4. **~2.9 mm of inner tube is already deployed at ITT = 0.** Identifying it took
    set2 from 4.00 mm to 0.70 mm RMS. See §5.
-5. **The tubes are not the 50 mm arcs the design description specifies** — the
-   inner tube measures ~39–42 mm, and the two-tube assembly's curvature *tapers*
-   along the advance in a way no constant-curvature tube pair can produce. See §6.
+5. **The tubes are not the 50 mm arcs the design description specifies.** They
+   were measured at **57 mm** (2026-09-08), which corroborates the model for the
+   outer tube but conflicts sharply with what `set2` says about the inner one
+   (~39.5 mm, pinned by four independent observables). See §10. The two-tube
+   assembly's curvature also *tapers* along an advance in a way no
+   constant-curvature pair can produce. See §6.
 6. **Translation undershoots by 0.66 mm on every one of 8 segments**, and the
    model cannot explain it — it predicts the commanded length exactly. See §7.
 7. **Friction is now modelled**, calibrated independently on `set2` (595 N/m of
@@ -82,16 +85,21 @@ backbone, not at its distal end. Model paths are sampled with
 
 Whole-trial registration RMS, mean of the 3 trials (`summary_error.png`):
 
-| Set | Commanded sequence | As specified | Identified | Rotation step |
+"Measured tubes" is the config as shipped — both tubes at the measured 57 mm
+radius, no home offset. "Identified" keeps that 57 mm for the outer tube and
+adds the two things the data pins independently: `R_inner` = 39.5 mm and the
+2.9 mm inner-tube home offset (§5, §10).
+
+| Set | Commanded sequence | Measured tubes | Identified | Rotation step |
 | :-- | :-- | --: | --: | :-- |
-| `set1`  | T 20 mm                        | 0.18 mm | **0.18 mm** | — |
-| `set2`  | T 35 mm → ITR 360°             | 4.00 mm | **0.70 mm** | inner tube alone |
-| `set3a` | T 35 mm → OTR 360°             | 14.52 mm | **15.34 mm** | outer tube only |
-| `set3b` | T 35 mm → OTR+ITR 360°         | 4.31 mm | **2.76 mm** | co-rotation |
-| `set4a` | T 35 mm → ITR 180° → T 35 mm   | 1.89 mm | **2.28 mm** | inner vs overlapped outer |
-| `set4b` | T 17.5 mm → ITR 180° → T 17.5 mm | 1.23 mm | **1.19 mm** | same, half overlap |
-| **All** | | 4.35 mm | 3.74 mm | |
-| **Excluding `set3a`** | | | **1.42 mm** | |
+| `set1`  | T 20 mm                        | 0.19 mm | **0.18 mm** | — |
+| `set2`  | T 35 mm → ITR 360°             | 5.05 mm | **0.70 mm** | inner tube alone |
+| `set3a` | T 35 mm → OTR 360°             | 13.44 mm | **15.12 mm** | outer tube only |
+| `set3b` | T 35 mm → OTR+ITR 360°         | 5.35 mm | **3.13 mm** | co-rotation |
+| `set4a` | T 35 mm → ITR 180° → T 35 mm   | 1.65 mm | **2.31 mm** | inner vs overlapped outer |
+| `set4b` | T 17.5 mm → ITR 180° → T 17.5 mm | 1.23 mm | **1.21 mm** | same, half overlap |
+| **All** | | 4.49 mm | 3.77 mm | |
+| **Excluding `set3a`** | | 2.69 mm | **1.51 mm** | |
 
 `set2` (`exp5.png`) is the strongest single result: the model tracks a 34 mm
 advance followed by a complete revolution with **0.70 mm** RMS, matching the
@@ -121,20 +129,20 @@ act (`windup_vs_superposition.png`):
 | Set | Rotates | OTT | Cmd | Measured | Model (full) | Model (torsionally rigid) |
 | :-- | :-- | --: | --: | --: | --: | --: |
 | `set2`  | ITR | 0 mm    | 360° | 351.8° (97.7 %) | 360.0° (100 %) | 360.0° (100 %) |
-| `set3a` | OTR | 35 mm   | 360° | 356.3° (99.0 %) | 301.7° (83.8 %) | 360.0° (100 %) |
+| `set3a` | OTR | 35 mm   | 360° | 356.3° (99.0 %) | 300.8° (83.6 %) | 360.0° (100 %) |
 | `set3b` | both | 35 mm  | 360° | 358.3° (99.5 %) | 360.0° (100 %) | 360.0° (100 %) |
-| `set4b` | ITR | 17.5 mm | 180° | 76.2° (42.3 %) | 56.5° (31.4 %) | 179.5° (**99.7 %**) |
-| `set4a` | ITR | 35 mm   | 180° | 60.0° (33.3 %) | 36.2° (**20.1 %**) | 178.1° (**98.9 %**) |
+| `set4b` | ITR | 17.5 mm | 180° | 76.2° (42.3 %) | 55.1° (30.6 %) | 179.6° (**99.8 %**) |
+| `set4a` | ITR | 35 mm   | 180° | 60.0° (33.3 %) | 36.9° (**20.5 %**) | 178.3° (**99.1 %**) |
 
-**With the tubes made torsionally rigid, `set4a` delivers 98.9 % of the
+**With the tubes made torsionally rigid, `set4a` delivers 99.1 % of the
 commanded rotation.** Curvature superposition accounts for roughly **1
 percentage point** of the loss; torsional compliance accounts for the rest. The
-full model predicts 20 % where 33 % was measured — the right regime and the
+full model predicts 21 % where 33 % was measured — the right regime and the
 right mechanism, from geometry and mechanics alone with nothing fitted to
 rotation data. The rigid model's 99 % is not close to anything measured.
 
 The mechanism is explicit in the model's state: at `set4a`'s final pose only
-**−26.8° of the −180° commanded relative roll** has reached the deployed
+**−26.9° of the −180° commanded relative roll** has reached the deployed
 overlap. The other 153° is wound into the inner tube's ~273 mm of torsionally
 free transmission behind the guide.
 
@@ -147,7 +155,7 @@ all), and that tells you nothing about the 180° trials, where the tubes are
 driven into strong opposition. The 2–8° bound was measured on exactly the
 configurations where the mechanism switches off.
 
-**The model over-predicts windup** in every case where it acts (20 % vs 33 % on
+**The model over-predicts windup** in every case where it acts (21 % vs 33 % on
 `set4a`, 31 % vs 42 % on `set4b`, 84 % vs 99 % on `set3a`). That is the expected
 direction of error: the model treats the whole retracted length as
 torsionally free and frictionless, whereas the real tubes are supported by, and
@@ -214,7 +222,7 @@ there and pulls that circle to 15.06 mm.
 
 ---
 
-## 6. The tubes are not 50 mm arcs
+## 6. What the tubes trace when deployed
 
 Fitting circles to nested sub-arcs *within* each advance (so the trend is
 within-trial, free of any cross-session confound) gives the tip path's mean
@@ -222,8 +230,10 @@ radius as a function of how far the tubes have advanced — `curvature_profile.p
 A tube of uniform curvature gives a flat line.
 
 **Inner tube alone** (`set2` T1, `set4a` T3, `set4b` T3 — 9 segments): roughly
-flat at **39–42 mm**, against the 50 mm specified. The identified 39.5 mm
-reproduces set2 to 0.70 mm RMS, so this is well determined.
+flat at **39–42 mm** — against 50 mm in the design description and **57 mm
+measured on the free tubes** (§10). The identified 39.5 mm reproduces set2 to
+0.70 mm RMS across four independent observables, so it is well determined; the
+disagreement with the direct measurement is the subject of §10.
 
 **Both tubes advancing** (15 segments): the measured radius **rises from ~36 mm
 at 12 mm of advance to ~61 mm at 30 mm** — the assembly starts as curved as the
@@ -247,8 +257,9 @@ Two further internal tensions worth knowing about:
   clear outer-tube straightening at the same advance.
 * For `set3b`, the advance path's own shape implies the tip ends ~11 mm off the
   guide axis, but its rotation circle measures 17.1 mm. Those two measurements
-  of the same pose are not consistent with any rigid configuration, which points
-  at an un-calibrated offset between the tracker marker and the tube tip.
+  of the same pose are not consistent with any rigid configuration. An
+  un-calibrated marker offset would explain it — but §10 rules that out for the
+  *inner* tube on a path-length argument, so for `set3b` it remains open.
 
 **A tube of `tip_straight_length` (a straight lead-in between the curved section
 and the distal tip) was added to the model** while chasing this, since the
@@ -376,11 +387,11 @@ nothing here was fitted to them:
 
 | Set | Measured | Frictionless | With calibrated friction |
 | :-- | --: | --: | --: |
-| `set4a` (OTT 35) | 60.0° | 36.2° | **69.0°** |
-| `set4b` (OTT 17.5) | 76.2° | 56.6° | **39.6°** |
+| `set4a` (OTT 35) | 60.0° | 36.9° | **70.5°** |
+| `set4b` (OTT 17.5) | 76.2° | 55.2° | **38.7°** |
 
-Friction closes most of `set4a`'s gap (error 23.8° → 9.0°) and opens `set4b`'s
-(19.6° → 36.6°). It is a large effect — tens of degrees — but its **sign is
+Friction closes most of `set4a`'s gap (error 23.1° → 10.5°) and opens `set4b`'s
+(21.0° → 37.5°). It is a large effect — tens of degrees — but its **sign is
 configuration-dependent**, so it is not the correction §3's gap was waiting for.
 
 The reason is that friction resists *both* legs of a sweep. Over a commanded
@@ -408,8 +419,8 @@ the return leg gives two different tip paths:
 
 | Set | Mean gap | Max gap |
 | :-- | --: | --: |
-| `set4a` | 9.15 mm | **11.26 mm** |
-| `set4b` | 1.95 mm | 4.11 mm |
+| `set4a` | 9.02 mm | **11.08 mm** |
+| `set4b` | 2.15 mm | 4.06 mm |
 
 Against a measured trial-to-trial repeatability of 0.08–0.95 mm, an 11 mm loop
 is enormous — this is a cheap, unambiguous experiment. **Sweep ITR out and
@@ -418,6 +429,81 @@ it calibrates the friction properly and settles the sign question; if the return
 retraces the outbound path, friction is far smaller than these coefficients say
 and §3's gap has to be explained by the transmission's free length instead.
 Either answer is worth more than any amount of further modelling.
+
+## 10. The measured 57 mm radius, and where it disagrees
+
+The tubes were **measured directly on 2026-09-08: both 57 mm radius of
+curvature**, superseding the 50 mm in the design description.
+[`config/ct_sdr.yaml`](config/ct_sdr.yaml) now carries 57 mm.
+
+That measurement lands differently on the two tubes.
+
+### The outer tube: corroborated
+
+§6 identified `R_outer` ≈ 53.6 mm and flagged it as **poorly determined** — the
+both-tube advances taper in a way no constant-curvature pair reproduces, so the
+fit had little to grip. 57 mm is close to that and is a direct measurement, so
+it simply wins. It also *improves* the two sets that lean hardest on the outer
+tube (`set3a` 15.3 → 13.4 mm, `set4a` 2.3 → 1.7 mm).
+
+### The inner tube: a real conflict
+
+`set2` deploys the inner tube alone and pins its radius through four
+observables at once. 39.5 mm matches all four; 57 mm misses all four:
+
+| `set2` observable | Measured | Model at 39.5 mm | Model at 57 mm |
+| :-- | --: | --: | --: |
+| advance path length | 34.40 mm | 34.39 | 35.00 |
+| advance chord | 33.40 mm | 33.87 | 34.45 |
+| advance arc radius | 39.5 mm | **39.5** | **57.0** |
+| rotation circle radius | 16.83 mm | **16.83** | **10.41** |
+| whole-trial RMS | — | **0.70 mm** | **5.04 mm** |
+
+**The obvious escape is ruled out.** If the tracker marker sat off the tube
+centreline by 17.5 mm toward the centre of curvature, a 57 mm tube would trace a
+39.5 mm arc — which would reconcile everything. But the same offset would make
+the marker travel only `35 × 39.5/57 = 24.3 mm` while the tube advances 35 mm.
+The marker actually traces **34.40 mm, 98 % of the advance**, so it is on the
+centreline and the traced arc radius *is* the deployed radius.
+
+### What it costs
+
+Mean whole-trial RMS over all 18 trials (and over the five sets excluding
+`set3a`, which fails for unrelated reasons — §2):
+
+| Tube parameters | set1 | set2 | set3a | set3b | set4a | set4b | mean | excl. set3a |
+| :-- | --: | --: | --: | --: | --: | --: | --: | --: |
+| measured 57 / 57 | 0.19 | 5.05 | 13.44 | 5.35 | 1.65 | 1.23 | 4.49 | 2.69 |
+| 57 / 57 + 2.9 mm home | 0.19 | 3.72 | 13.92 | 4.00 | 1.59 | 1.12 | 4.09 | 2.12 |
+| **57 outer / 39.5 inner + home** | 0.18 | **0.70** | 15.12 | 3.13 | 2.31 | 1.21 | **3.77** | **1.51** |
+| fitted 53.6 / 39.5 + home | 0.18 | 0.70 | 15.34 | 2.76 | 2.28 | 1.19 | 3.74 | 1.42 |
+
+**Recommendation: use your measured 57 mm for the outer tube and keep 39.5 mm
+for the inner**, with the 2.9 mm home offset. That hybrid is as good as the
+fully fitted parameter set (3.77 vs 3.74 mm mean) while replacing the one
+badly-determined fitted number with a measurement. Note also that the 2.9 mm
+home offset is worth 0.4 mm of mean RMS *regardless* of which radius is right —
+it is a separable finding.
+
+### How to settle it
+
+The two numbers describe different things and could both be right:
+
+* **How was the 57 mm measured?** If a circle was fitted to the whole curved
+  section including the straight transitions at each end, it reads high, while
+  the distal ~35 mm that `set2` actually deploys is tighter. That would make
+  both numbers correct and fits the non-uniform curvature §6 already found.
+  Measuring centreline-vs-outer-surface is only worth 1.3 mm, so it is not that.
+* **Is the inner tube's curvature uniform?** §6 says the inner-only traces are
+  flat at 39–42 mm over deployments spanning 0–70 mm from its tip. If the free
+  tube really is a uniform 57 mm over that same span, the two cannot both hold.
+
+**The decisive experiment is one photograph.** Retract the outer tube fully,
+advance the inner tube ~35 mm, and photograph the deployed shape against a grid
+or ruler. That measures the deployed radius directly, in the configuration that
+matters, and takes minutes.
+
+---
 
 ## Files
 

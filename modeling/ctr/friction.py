@@ -69,6 +69,16 @@ Two things it correctly predicts as *small* on this robot:
 Whether that adds up to anything is an empirical question; see
 ``modeling/validation/friction_study.py``.
 
+Always continue from the frictionless solution
+----------------------------------------------
+A wound concentric-tube robot has several torsional equilibria, and adding
+friction perturbs which one a cold start falls into.  Cold-starting a friction
+solve can therefore return a *genuine root on a different branch* -- at
+``ITR = 90 deg`` on this robot it reports 220 deg of delivered roll for a
+90 deg command, which is not a friction effect at all.  Solve frictionless
+first and pass ``guess=free.u_z0``, or use
+:meth:`ctr.robot.CTSDR.solve_path`, which continues automatically.
+
 What is *not* modelled
 ----------------------
 * **Axial friction.**  Only torque about the tube axis is resisted here.  A

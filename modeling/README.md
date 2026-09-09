@@ -119,7 +119,7 @@ design description:
 | Wall thickness | 0.25 mm | 0.2 mm |
 | Inner diameter (derived) | 3.1 mm | 2.2 mm |
 | Total length | ≈ 178 mm | ≈ 308 mm |
-| Radius of curvature | 50 mm | 50 mm |
+| Radius of curvature (measured) | 57 mm | 57 mm |
 | `EI` at E = 60 GPa | 0.2227 N·m² | 0.0656 N·m² |
 | `GJ` at ν = 0.33 | 0.1674 N·m² | 0.0493 N·m² |
 
@@ -136,11 +136,13 @@ deployed length directly.
 Everything in the table above comes straight from the design description, and
 the NDI validation says some of it does not match the hardware.
 
-1. **The 50 mm radius is not what the tubes measure.** The inner tube traces
-   **39–42 mm** in the recordings, and the two-tube assembly's curvature
-   *tapers* along an advance in a way no constant-curvature pair reproduces.
-   [VALIDATION_REPORT.md](VALIDATION_REPORT.md) §6. Measure the tubes' free
-   shape directly; the config still ships the nominal 50 mm.
+1. **The radius is measured at 57 mm, but the inner tube disagrees.** The
+   tubes were measured at 57 mm (2026-09-08) and the config carries that. It
+   corroborates the model for the *outer* tube, but the inner tube traces
+   **39–42 mm** in the recordings — pinned by four independent observables in
+   `set2`, which a marker offset cannot explain.
+   [VALIDATION_REPORT.md](VALIDATION_REPORT.md) §10 lays out the conflict; one
+   photograph of the deployed inner tube settles it.
 2. **`curved_length_mm` (78.54 mm, a placeholder).** How much of each tube is
    pre-curved was not specified. 78.54 mm is a 90° arc at R = 50 mm, which
    covers the largest advance in the ICRA2027 tests (35 mm outer, 70 mm inner)
@@ -326,7 +328,7 @@ The prediction flagged here before the comparison was run — that the model
 would over-predict windup if the tubes are supported over more of their
 retracted length than the free-twist assumption allows — is what the data
 shows: the model over-predicts the loss on every configuration where windup
-acts (20 % vs 33 % delivered on `set4a`, 84 % vs 99 % on `set3a`).
+acts (21 % vs 33 % delivered on `set4a`, 84 % vs 99 % on `set3a`).
 
 Friction was the obvious candidate and has since been implemented and tested
 (§9). It does *not* simply close that gap: its sign is configuration-dependent,

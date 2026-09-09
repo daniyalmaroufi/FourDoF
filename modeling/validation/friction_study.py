@@ -19,8 +19,8 @@ fixed part-wound pose, friction is a pure torque sink between the actuator and
 the deployed section and costs delivered rotation.  But across a whole 0 -> 180
 deg sweep the deployed section winds *and then unwinds*, and friction resists
 the unwinding too -- holding the assembly more wound than it would otherwise
-settle.  On these two sets the second effect wins for `set4a` (36 -> 69 deg
-against 60 measured) and the first wins for `set4b` (57 -> 40 against 76).
+settle.  On these two sets the second effect wins for `set4a` (37 -> 71 deg
+against 60 measured) and the first wins for `set4b` (55 -> 39 against 76).
 
     python3 validation/friction_study.py
     python3 validation/friction_study.py --steps 25
