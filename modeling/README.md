@@ -24,6 +24,9 @@ it captures that constant curvature cannot are both large on this robot:
   away and the robot jumps discontinuously to another one. The model finds it;
   `figures/workspace_itr_sweep.png` shows where.
 
+Full derivations, the numerical method, and every equation cross-referenced to
+the code are in **[THEORY.md](THEORY.md)**.
+
 ## Validated against the NDI trials
 
 The model has been run through the commanded joint sequence of all 18 free-space
@@ -78,6 +81,7 @@ modeling/
 │   ├── windup_vs_superposition.py
 │   └── friction_study.py      # friction calibrated on set2, tested on set4a/b
 ├── figures/                   # generated PNGs (validation/ holds the comparison set)
+├── THEORY.md                  # the equations and how they are solved
 ├── VALIDATION_REPORT.md       # what the measurements say about the model
 └── tests/test_ctr.py          # 90 verification tests
 ```

@@ -6,6 +6,8 @@ experiment in [`ICRA2027/exp_info.md`](../ICRA2027/exp_info.md) and compared
 against the NDI tip recordings — 6 sets × 3 trials = **18 trials, 47 782
 samples**. Exp 4 is excluded (logged as "Random Exp — don't count").
 
+The equations themselves, with derivations, are in [THEORY.md](THEORY.md).
+
 Per-experiment figures are in [`figures/validation/`](figures/validation/), one
 per experiment number (`exp1.png` … `exp19.png`), plus four summary figures and
 [`metrics.csv`](figures/validation/metrics.csv) with every number below.
@@ -512,6 +514,7 @@ matters, and takes minutes.
 | `validation/ndi_experiments.py` | Commanded sequences, trial loading, model trajectories, registration |
 | `validation/run_validation.py` | Per-trial comparison, geometry identification, figures, `metrics.csv` |
 | `validation/windup_vs_superposition.py` | The §3 attribution |
+| `THEORY.md` | The equations and the numerical method |
 | `ctr/friction.py` | Coulomb friction, tube-tube and tube-guide (§9) |
 | `validation/friction_study.py` | §9: calibrate on set2, predict on set4a/b |
 | `figures/validation/friction_study.png` | §9 |
