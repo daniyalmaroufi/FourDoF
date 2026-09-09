@@ -16,8 +16,13 @@ Model assumptions (the paper's, restated for this robot)
   the tubes present share **one** backbone curve ``p(s)`` and therefore one
   bending curvature.  They may, however, twist arbitrarily relative to one
   another about the common tangent.
-* Tube-to-tube interaction is frictionless and transmits no axial torque, so
-  each tube's own moment balance closes about its z-axis independently.
+* Tube-to-tube interaction transmits no axial torque, so each tube's own
+  moment balance closes about its z-axis independently.  That is the paper's
+  frictionless assumption and remains the default; passing a
+  :class:`~ctr.friction.FrictionModel` to :meth:`CosseratModel.solve` relaxes
+  it, adding equal-and-opposite sliding torques between adjacent tubes and
+  against the guide.  Friction is a small effect on this robot -- see
+  ``modeling/VALIDATION_REPORT.md`` §9 before assuming it explains anything.
 * Linear elasticity with ``K_i = diag(E_i I_i, E_i I_i, G_i J_i)``.
 
 State and equations
@@ -70,7 +75,9 @@ side vanishes and ``u_i,z`` is constant there, giving
     theta_i(0) = alpha_i - beta_i u_i,z(0)
 
 for a tube whose proximal end sits at ``beta_i <= 0`` and whose actuator is
-commanded to ``alpha_i``.
+commanded to ``alpha_i``.  With friction enabled this picks up one more term,
+``tau_f beta_i^2 / (2 GJ_i)``, because the torque in the transmission is then
+largest at the actuator and bleeds off towards the guide exit.
 """
 
 from __future__ import annotations
@@ -82,6 +89,7 @@ import numpy as np
 from scipy.integrate import solve_ivp
 from scipy.optimize import least_squares
 
+from .friction import FrictionModel
 from .loads import ExternalLoad
 from .tube import Tube
 
@@ -311,6 +319,7 @@ class CosseratModel:
         load: ExternalLoad,
         want_l: bool,
         torque_tube: int,
+        friction=None,
     ) -> np.ndarray:
         R = y[self._i_R].reshape(3, 3)
         theta = y[self._i_th]
@@ -354,9 +363,46 @@ class CosseratModel:
             if want_l and i == torque_tube:
                 duz[i] -= l_axial / self.k_t[i]
 
+        if friction is not None and not friction.is_zero and len(active) > 1:
+            self._apply_friction(friction, active, theta, u, star, duz)
+
         dy[self._i_n] = -load.f(s)
         dy[self._i_m] = -np.cross(tangent, n_vec) - (l_vec if want_l else 0.0)
         return dy
+
+    def _apply_friction(self, friction, active, theta, u, star, duz) -> None:
+        """Add sliding friction between overlapping tubes to the torsion ODE.
+
+        Acts pairwise on adjacent tubes in the nesting order, equal and
+        opposite, so the axial moment balance ``sum_i GJ_i u_i,z = (R e3).m``
+        is preserved exactly -- friction moves torque between tubes, it does
+        not create any.
+
+        The sliding sense at a contact is the sense of the two tubes' relative
+        *angular velocity* as the manoeuvre proceeds -- carried by
+        ``friction.direction``, which :meth:`ctr.robot.CTSDR.solve_path` sets
+        from each step's change in commanded relative roll.  It is emphatically
+        not ``d(u_z)/ds``: that is a spatial derivative of twist along the
+        tube and says nothing about which way the surfaces are sliding.
+
+        Where the tubes do not rotate relative to each other -- co-rotation, or
+        a pure translation -- ``direction`` is zero, nothing rubs, and friction
+        drops out.  That is why `set3b`-style manoeuvres are unaffected.
+        """
+        kappa = float(np.hypot(u[0], u[1]))
+        sense = float(np.sign(friction.direction))
+        if kappa <= 0.0 or sense == 0.0:
+            return
+        order = sorted(active)  # outermost first, matching tube indexing
+        for a, b in zip(order[:-1], order[1:]):
+            c, sn = np.cos(theta[b]), np.sin(theta[b])
+            u_bx = c * u[0] + sn * u[1]
+            u_by = -sn * u[0] + c * u[1]
+            r_contact = 0.5 * self.tubes[b].outer_diameter
+            tau = friction.tube_tube_torque(
+                kappa, self.k_b[b], (u_bx, u_by), star[b], r_contact)
+            duz[b] -= sense * tau / self.k_t[b]
+            duz[a] += sense * tau / self.k_t[a]
 
     # -- forward integration ------------------------------------------------
 
@@ -368,6 +414,7 @@ class CosseratModel:
         load: ExternalLoad,
         want_l: bool,
         torque_tube: int,
+        friction,
         rtol: float,
         atol: float,
         n_points: Optional[int],
@@ -398,7 +445,7 @@ class CosseratModel:
                 self._deriv,
                 (a, b),
                 y,
-                args=(act, betas, load, want_l, torque_tube),
+                args=(act, betas, load, want_l, torque_tube, friction),
                 method="RK45",
                 rtol=rtol,
                 atol=atol,
@@ -435,6 +482,7 @@ class CosseratModel:
         betas: np.ndarray,
         alphas: np.ndarray,
         loaded: bool,
+        friction=None,
     ) -> np.ndarray:
         y0 = np.zeros(self.state_dim)
         y0[self._i_R] = np.eye(3).ravel()
@@ -444,11 +492,47 @@ class CosseratModel:
         u_z0[emerged] = x[offset:]
         y0[self._i_uz] = u_z0
         # Windup accumulated in the straight transmission, s in [beta_i, 0].
-        y0[self._i_th] = alphas - betas * u_z0
+        y0[self._i_th] = alphas - betas * u_z0 + self._transmission_friction_twist(
+            betas, u_z0, emerged, friction)
         if loaded:
             y0[self._i_n] = x[0:3]
             y0[self._i_m] = x[3:6]
         return y0
+
+    def _transmission_friction_twist(self, betas, u_z0, emerged, friction) -> np.ndarray:
+        """Extra windup from friction along the retracted length [rad].
+
+        Inside the guide the tube carries a torque that must also overcome
+        friction, so the torque is largest at the actuator and bleeds off
+        towards the guide exit: ``|T(s)| = |T(0)| + tau_f |s|``.  Integrating
+        ``T / GJ`` over ``[beta, 0]`` adds ``tau_f beta^2 / (2 GJ)`` on top of
+        the frictionless ``|beta| u_z(0)``.
+
+        The sign is the interesting part, and it is not one-way.  Held at a
+        fixed part-wound pose this term is a pure torque sink: more of the
+        commanded angle is spent twisting the transmission and less arrives at
+        the tip.  But over a full 0 -> 180 deg sweep the deployed section winds
+        *and then unwinds*, and friction resists the unwinding too, holding the
+        assembly more wound than it would otherwise settle.  Which effect wins
+        depends on the configuration -- measured on the ICRA2027 sets it helps
+        `set4a` and hurts `set4b`.  See modeling/VALIDATION_REPORT.md section 9;
+        do not assume a sign without checking.
+        """
+        out = np.zeros(self.n_tubes)
+        if friction is None or friction.is_zero or friction.mu_guide == 0.0:
+            return out
+        for i in range(self.n_tubes):
+            if not emerged[i]:
+                continue
+            r_contact = 0.5 * self.tubes[i].outer_diameter
+            tau_f = friction.transmission_torque(r_contact)
+            if tau_f == 0.0:
+                continue
+            # Same sense as the existing twist, which is what the actuator is
+            # driving against; fall back to the manoeuvre sense at zero twist.
+            sense = np.sign(u_z0[i]) or np.sign(friction.direction)
+            out[i] = sense * tau_f * betas[i] ** 2 / (2.0 * self.k_t[i])
+        return out
 
     def _restart_points(
         self, x0: np.ndarray, emerged: np.ndarray, betas: np.ndarray, loaded: bool
@@ -487,6 +571,7 @@ class CosseratModel:
         betas: Sequence[float],
         alphas: Sequence[float],
         load: Optional[ExternalLoad] = None,
+        friction=None,
         guess: Optional[Sequence[float]] = None,
         n_points: int = 200,
         rtol: float = 1e-9,
@@ -506,6 +591,11 @@ class CosseratModel:
             proximal end.
         load
             External loading; ``None`` means unloaded.
+        friction
+            :class:`~ctr.friction.FrictionModel`, or ``None`` for the
+            frictionless model.  Its ``direction`` sets which way the contacts
+            slide, so sweeping a rotation forwards and backwards with opposite
+            directions is what produces hysteresis.
         guess
             Base torsions ``u_i,z(0)`` to start from -- typically ``u_z0`` from
             a neighbouring solution.  ``nan`` entries fall back to zero.
@@ -561,9 +651,9 @@ class CosseratModel:
             x0[3:6] = load.tip_moment
 
         def residual(x: np.ndarray) -> np.ndarray:
-            y0 = self._pack_y0(x, emerged, betas, alphas, loaded)
+            y0 = self._pack_y0(x, emerged, betas, alphas, loaded, friction)
             y_end, tip_u_z, _ = self._integrate(
-                y0, segs, betas, load, want_l, torque_tube, rtol, atol, None
+                y0, segs, betas, load, want_l, torque_tube, friction, rtol, atol, None
             )
             bc = tip_u_z.copy()
             if loaded and np.any(load.tip_moment):
@@ -617,9 +707,9 @@ class CosseratModel:
                 "each solution's u_z0 as the next guess."
             )
 
-        y0 = self._pack_y0(out.x, emerged, betas, alphas, loaded)
+        y0 = self._pack_y0(out.x, emerged, betas, alphas, loaded, friction)
         _, _, traj = self._integrate(
-            y0, segs, betas, load, want_l, torque_tube, rtol, atol, n_points
+            y0, segs, betas, load, want_l, torque_tube, friction, rtol, atol, n_points
         )
         s_arr, y_arr, act = traj
 

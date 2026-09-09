@@ -13,6 +13,9 @@ steerable drilling robot.
     print(sol.tip_position * 1e3, "mm")
 """
 
+from .friction import (
+    MU_NITINOL_NITINOL, MU_STEEL_NITINOL, NO_FRICTION, FrictionModel,
+)
 from .loads import NO_LOAD, ExternalLoad
 from .model import CosseratModel, ShootingError, Solution, hat, rot_z
 from .robot import DEFAULT_CONFIG, INNER, OUTER, CTSDR, Joints
@@ -22,6 +25,10 @@ __all__ = [
     "CTSDR",
     "CosseratModel",
     "ExternalLoad",
+    "FrictionModel",
+    "NO_FRICTION",
+    "MU_NITINOL_NITINOL",
+    "MU_STEEL_NITINOL",
     "Joints",
     "NO_LOAD",
     "ShootingError",

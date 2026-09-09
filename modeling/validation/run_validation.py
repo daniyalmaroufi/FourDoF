@@ -59,8 +59,10 @@ from mpl_toolkits.mplot3d import Axes3D  # noqa: E402,F401
 
 OUT_DIR = os.path.join(_MODELING, "figures", "validation")
 
-#: As shipped in config/ct_sdr.yaml: 50 mm radius on both tubes, no lead-in.
-AS_SPECIFIED = dict(R_outer=50.0, S_outer=0.0, R_inner=50.0, home_outer=0.0, home_inner=0.0)
+#: As shipped in config/ct_sdr.yaml: the MEASURED free-tube radius, 57 mm on
+#: both tubes (2026-09-08), no lead-in, tips flush at zero.
+AS_SPECIFIED = dict(R_outer=57.0, S_outer=0.0, R_inner=57.0,
+                    home_outer=0.0, home_inner=0.0)
 
 #: Identified from the data.  Two of these are well determined and two are not
 #: -- see modeling/VALIDATION_REPORT.md before using them as a calibration.
@@ -307,7 +309,7 @@ def fig_trial(tr, es, cmp_spec, cmp_fit, path):
 
     ax_d = fig.add_subplot(gs[1, :2])
     prog = np.arange(len(best["dev"]))
-    for cmp_, colour, lab in ((cmp_spec, vs.NEUTRAL, "as specified (R = 50 mm)"),
+    for cmp_, colour, lab in ((cmp_spec, vs.NEUTRAL, "measured tubes (R = 57 mm)"),
                               (cmp_fit, vs.SERIES[2], "fitted geometry")):
         if cmp_ is None:
             continue
@@ -448,7 +450,7 @@ def fig_rotation_delivery(records, path):
     xs = np.arange(len(labels))
     w = 0.26
     for off, vals, colour, lab in ((-w, meas, vs.SERIES[0], "measured"),
-                                   (0.0, spec, vs.NEUTRAL, "model, as specified"),
+                                   (0.0, spec, vs.NEUTRAL, "model, measured R = 57 mm"),
                                    (w, fit, vs.SERIES[1], "model, fitted geometry")):
         ax_b.bar(xs + off, vals, width=w - 0.03, color=colour, label=lab, zorder=3)
     ax_b.axhline(100.0, color=vs.INK_2, lw=1.0, ls=(0, (4, 3)), zorder=2)
@@ -461,7 +463,7 @@ def fig_rotation_delivery(records, path):
     vs.tidy(ax_b)
 
     ax_s.scatter(spec, meas, s=54, color=vs.NEUTRAL, zorder=3,
-                 edgecolors=vs.SURFACE, linewidths=1.2, label="as specified")
+                 edgecolors=vs.SURFACE, linewidths=1.2, label="measured R = 57 mm")
     ax_s.scatter(fit, meas, s=54, color=vs.SERIES[1], zorder=4,
                  edgecolors=vs.SURFACE, linewidths=1.2, label="fitted geometry")
     lim = [0, max(max(meas), max(spec), max(fit)) * 1.12 + 5]
@@ -493,7 +495,7 @@ def fig_summary_error(records, path):
     keys = [e.key for e in X.EXPERIMENTS]
     xs = np.arange(len(keys))
     w = 0.34
-    for off, field, colour, lab in ((-w / 2, "spec_rms", vs.NEUTRAL, "as specified (R = 50 mm, no lead-in)"),
+    for off, field, colour, lab in ((-w / 2, "spec_rms", vs.NEUTRAL, "measured tubes (R = 57 mm, no lead-in)"),
                                     (w / 2, "fit_rms", vs.SERIES[1], "fitted geometry")):
         vals, errs = [], []
         for k in keys:
@@ -550,7 +552,7 @@ def main(argv=None):
 
     robot_spec = build_robot(**AS_SPECIFIED)
     robot_fit = build_robot(**params)
-    print(f"\nas specified : R_outer={AS_SPECIFIED['R_outer']:.1f}  "
+    print(f"\nmeasured tubes: R_outer={AS_SPECIFIED['R_outer']:.1f}  "
           f"S_outer={AS_SPECIFIED['S_outer']:.1f}  R_inner={AS_SPECIFIED['R_inner']:.1f}")
     print(f"fitted       : R_outer={params['R_outer']:.1f}  "
           f"S_outer={params['S_outer']:.1f}  R_inner={params['R_inner']:.1f}")
@@ -596,7 +598,7 @@ def main(argv=None):
     print("\nwriting summary figures ...")
     made = {
         "curvature_profile.png": fig_curvature_profile(
-            trials, {"model, as specified": robot_spec,
+            trials, {"model, measured R = 57 mm": robot_spec,
                      "model, fitted geometry": robot_fit},
             os.path.join(args.out_dir, "curvature_profile.png")),
         "rotation_delivery.png": fig_rotation_delivery(

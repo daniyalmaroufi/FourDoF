@@ -24,7 +24,11 @@ tubes:
     outer_diameter_mm: 3.6
     wall_thickness_mm: 0.25
     length_mm: 178.0
-    radius_of_curvature_mm: 50.0
+    # MEASURED on the free tubes (2026-09-08), both the same.  Supersedes the
+    # 50 mm in the design description.  Note this disagrees with what the NDI
+    # advances imply for the INNER tube (~39.5 mm) -- see VALIDATION_REPORT.md
+    # section 10.  The outer tube's 57 mm is consistent with the data.
+    radius_of_curvature_mm: 57.0
     # NOT given in the design description: how much of the distal end is
     # pre-curved.  90 deg at R = 50 mm is 78.54 mm, which covers the largest
     # advance used in the ICRA2027 tests (35 mm outer, 70 mm inner) with
@@ -42,7 +46,11 @@ tubes:
     outer_diameter_mm: 2.6
     wall_thickness_mm: 0.2
     length_mm: 308.0
-    radius_of_curvature_mm: 50.0
+    # MEASURED on the free tubes (2026-09-08), both the same.  Supersedes the
+    # 50 mm in the design description.  Note this disagrees with what the NDI
+    # advances imply for the INNER tube (~39.5 mm) -- see VALIDATION_REPORT.md
+    # section 10.  The outer tube's 57 mm is consistent with the data.
+    radius_of_curvature_mm: 57.0
     curved_length_mm: 78.54
     base_offset_mm: null
 

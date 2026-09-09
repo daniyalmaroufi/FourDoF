@@ -15,6 +15,7 @@ cd modeling
 python3 validation/run_validation.py            # all 18 trials + summaries
 python3 validation/run_validation.py --fit      # re-identify geometry first
 python3 validation/windup_vs_superposition.py   # the 180° attribution
+python3 validation/friction_study.py            # friction, calibrated on set2
 ```
 
 ---
@@ -39,6 +40,10 @@ python3 validation/windup_vs_superposition.py   # the 180° attribution
    along the advance in a way no constant-curvature tube pair can produce. See §6.
 6. **Translation undershoots by 0.66 mm on every one of 8 segments**, and the
    model cannot explain it — it predicts the commanded length exactly. See §7.
+7. **Friction is now modelled**, calibrated independently on `set2` (595 N/m of
+   guide contact reproduces its 8.2° loss exactly). It is a large effect but
+   **not one-signed**, so it does not simply close §3's gap — and it predicts an
+   11 mm hysteresis loop that would be easy to measure. See §9.
 
 ---
 
@@ -311,16 +316,108 @@ Ordered by how much they would improve the next round.
    if the return path differs from the outbound one, that is the hysteresis, and
    it bounds the friction the model currently omits.
 
-8. **Add friction to the transmission model.** §3 shows the model over-predicts
-   windup consistently, in the direction that unmodelled friction and support
-   would explain. A single Coulomb-friction-per-unit-length parameter fitted to
-   `set4a`/`set4b` would likely close most of the remaining gap — and it is the
-   parameter that matters for a robot whose dominant error is windup.
+8. **~~Add friction to the transmission model.~~** *Done — see §9. The result
+   did not go the way this recommendation predicted, and the recommendation as
+   originally written was wrong: friction is not a one-signed correction and
+   fitting it to `set4a`/`set4b` would not have been legitimate anyway, since
+   `set2` calibrates it independently. What replaces it is §9's last paragraph:
+   run the hysteresis experiment.*
 
 9. **Calibrate the translation scale factor** (§7) — 24/24 one-sided undershoot
    is free accuracy.
 
 ---
+
+## 9. Friction
+
+Added after the first pass of this report, in [`ctr/friction.py`](ctr/friction.py),
+with the study in [`validation/friction_study.py`](validation/friction_study.py)
+and `figures/validation/friction_study.png`.
+
+### What is modelled
+
+Two contacts, with different materials and different coefficients:
+
+| Contact | Where | Dry μ | Wetted μ |
+| :-- | :-- | --: | --: |
+| nitinol on nitinol | inner tube inside outer, over the overlap | **0.35** | 0.15 |
+| nitinol on stainless steel | tubes inside the rigid guide | **0.25** | 0.12 |
+
+Dry values are appropriate for a robot drilling in air or bone. NiTi-on-NiTi is
+the higher of the two because it is adhesive and galls readily — that ordering
+is not incidental and is locked by a test. These are order-of-magnitude
+literature values, **not measurements of your tubes**; the study treats the
+contact force as the free parameter and calibrates it.
+
+Friction enters each tube's torsion ODE as a distributed axial moment, equal
+and opposite between contacting tubes, so the axial moment balance
+`Σ GJ_i u_i,z = (R e₃)·m` is preserved exactly — friction moves torque between
+tubes, it does not create any. The sliding sense comes from the change in
+commanded *relative* roll, so a co-rotation or a pure translation correctly
+produces no sliding at all.
+
+### Calibration: `set2` is the free lunch
+
+`set2` deploys **only** the inner tube, so there is no second tube to couple to.
+The frictionless model therefore predicts a perfect 360° with exactly zero
+windup and has *no mechanism whatsoever* for the 8.2° the tracker recorded.
+Everything in that shortfall is friction against the guide bore, which makes it
+a clean calibration — the same role `set2` played for the tube geometry in §5.
+
+The response is linear, and **595 N/m of guide contact force reproduces the
+measured 8.2° exactly**. That number is physically sensible rather than a
+fudge: it corresponds to the guide reacting the inner tube's 1.66 N·m
+straightening moment over a ≈53 mm effective grip.
+
+### Prediction: large, and *not* one-signed
+
+Applying that calibrated friction to the two 180° rotations — out of sample,
+nothing here was fitted to them:
+
+| Set | Measured | Frictionless | With calibrated friction |
+| :-- | --: | --: | --: |
+| `set4a` (OTT 35) | 60.0° | 36.2° | **69.0°** |
+| `set4b` (OTT 17.5) | 76.2° | 56.6° | **39.6°** |
+
+Friction closes most of `set4a`'s gap (error 23.8° → 9.0°) and opens `set4b`'s
+(19.6° → 36.6°). It is a large effect — tens of degrees — but its **sign is
+configuration-dependent**, so it is not the correction §3's gap was waiting for.
+
+The reason is that friction resists *both* legs of a sweep. Over a commanded
+0 → 180°, the relative roll at the deployed section is not monotonic: it rises,
+peaks, then relaxes back toward alignment. On the way up friction is a pure
+torque sink between actuator and tip and costs delivered rotation; on the way
+down it resists the relaxation and *holds* the assembly wound. Which effect
+dominates depends on the configuration. Held at one fixed pose part way up
+(ITR = 90°, a-priori coefficients) the first effect is all you see, and it is
+small: 14.26° → 14.00° delivered, a 12 µm tip shift.
+
+⚠️ The model uses **one sliding sense per commanded step**, taken from the
+change in commanded relative roll. That is right on a monotonic leg and wrong
+where the local sliding reverses part way through — which is exactly what
+happens here. A proper stick–slip treatment (a complementarity solve, with the
+local relative rotation rate setting each contact's state) is what would make
+the sign trustworthy. Until then, treat §9's `set4a`/`set4b` numbers as showing
+*scale*, not as a validated prediction.
+
+### The prediction worth testing
+
+Friction makes the model **path-dependent**, which the frictionless model
+cannot be. Sweeping ITR out to 180° and back with the sliding sense reversed on
+the return leg gives two different tip paths:
+
+| Set | Mean gap | Max gap |
+| :-- | --: | --: |
+| `set4a` | 9.15 mm | **11.26 mm** |
+| `set4b` | 1.95 mm | 4.11 mm |
+
+Against a measured trial-to-trial repeatability of 0.08–0.95 mm, an 11 mm loop
+is enormous — this is a cheap, unambiguous experiment. **Sweep ITR out and
+back, in steps with dwells, and record the return path.** If the loop is there,
+it calibrates the friction properly and settles the sign question; if the return
+retraces the outbound path, friction is far smaller than these coefficients say
+and §3's gap has to be explained by the transmission's free length instead.
+Either answer is worth more than any amount of further modelling.
 
 ## Files
 
@@ -329,6 +426,9 @@ Ordered by how much they would improve the next round.
 | `validation/ndi_experiments.py` | Commanded sequences, trial loading, model trajectories, registration |
 | `validation/run_validation.py` | Per-trial comparison, geometry identification, figures, `metrics.csv` |
 | `validation/windup_vs_superposition.py` | The §3 attribution |
+| `ctr/friction.py` | Coulomb friction, tube-tube and tube-guide (§9) |
+| `validation/friction_study.py` | §9: calibrate on set2, predict on set4a/b |
+| `figures/validation/friction_study.png` | §9 |
 | `figures/validation/exp*.png` | One figure per experiment number (18) |
 | `figures/validation/summary_error.png` | §2 |
 | `figures/validation/windup_vs_superposition.png` | §3 |

@@ -16,12 +16,13 @@ sit at the origin, so ``OTT`` and ``ITT`` read out deployed length directly.
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Optional, Sequence, Tuple
 
 import numpy as np
 import yaml
 
+from .friction import FrictionModel
 from .loads import ExternalLoad
 from .model import CosseratModel, Solution
 from .tube import Tube
@@ -190,17 +191,20 @@ class CTSDR:
         self,
         joints: Joints,
         load: Optional[ExternalLoad] = None,
+        friction: Optional[FrictionModel] = None,
         guess: Optional[Sequence[float]] = None,
         **kwargs,
     ) -> Solution:
         """Solve the boundary value problem for one joint configuration."""
         betas, alphas = self.joints_to_model(joints)
-        return self.model.solve(betas, alphas, load=load, guess=guess, **kwargs)
+        return self.model.solve(betas, alphas, load=load, friction=friction,
+                                guess=guess, **kwargs)
 
     def solve_path(
         self,
         path: Sequence[Joints],
         load: Optional[ExternalLoad] = None,
+        friction: Optional[FrictionModel] = None,
         **kwargs,
     ):
         """Solve a sequence of configurations, warm-starting each from the last.
@@ -209,12 +213,31 @@ class CTSDR:
         equations admit multiple equilibria once the tubes are wound up, and
         marching from a neighbouring solution keeps the solver on the branch
         the hardware actually follows instead of letting it jump.
+
+        Friction, if given, has its sliding ``direction`` set from each step's
+        own rotation increment rather than used as supplied.  That is what
+        makes a forward sweep and the reverse of it different: run the same
+        path in both orders and the gap between them is the modelled
+        hysteresis.
         """
         guess = None
         out = []
+        prev = None
         for j in path:
-            sol = self.solve(j, load=load, guess=guess, **kwargs)
+            # Nothing has moved yet at the first waypoint, so no contact has
+            # a sliding sense: friction is off there by construction.
+            step_friction = None if prev is None else friction
+            if friction is not None and prev is not None:
+                # Relative roll, through the configured signs: a co-rotation
+                # leaves this unchanged and correctly yields no sliding.
+                _, a_now = self.joints_to_model(j)
+                _, a_prev = self.joints_to_model(prev)
+                d = (a_now[INNER] - a_now[OUTER]) - (a_prev[INNER] - a_prev[OUTER])
+                step_friction = replace(friction, direction=float(np.sign(d)))
+            sol = self.solve(j, load=load, friction=step_friction,
+                             guess=guess, **kwargs)
             guess = sol.u_z0
+            prev = j
             out.append(sol)
         return out
 

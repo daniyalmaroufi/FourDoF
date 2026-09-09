@@ -44,9 +44,16 @@ rotation sense is negative, and ~2.9 mm of inner tube is already deployed at
 ITT = 0 — and showed that the tubes are **not** the 50 mm arcs the design
 description specifies. Read §5–§7 of the report before trusting absolute numbers.
 
+Coulomb friction between the tubes and against the guide was added afterwards
+(`ctr/friction.py`, dry nitinol–nitinol μ = 0.35, steel–nitinol μ = 0.25) and
+calibrated on set2, where it is the *only* loss mechanism the model has. It is a
+large effect but not a one-signed one, and it predicts an 11 mm hysteresis loop
+that is easy to measure — §9 of the report.
+
 ```bash
 python3 validation/run_validation.py            # all 18 trials + summaries
 python3 validation/windup_vs_superposition.py   # the windup attribution
+python3 validation/friction_study.py            # friction, calibrated on set2
 ```
 
 ## Layout
@@ -56,6 +63,7 @@ modeling/
 ├── ctr/                       # the model
 │   ├── tube.py                # geometry, material, pre-curvature, EI/GJ, strain & stress
 │   ├── loads.py               # external tip wrench and distributed loads
+│   ├── friction.py            # Coulomb friction: tube-tube and tube-guide
 │   ├── model.py               # the Cosserat ODEs + the shooting solver  <- the paper
 │   └── robot.py               # CT-SDR: joints -> tube placement -> solve
 ├── config/ct_sdr.yaml         # the nitinol tube parameters (edit this, not the code)
@@ -67,10 +75,11 @@ modeling/
 ├── validation/                # scoring the model against the ICRA2027 NDI data
 │   ├── ndi_experiments.py     # commanded sequences, trial loading, registration
 │   ├── run_validation.py      # per-trial comparison + geometry identification
-│   └── windup_vs_superposition.py
+│   ├── windup_vs_superposition.py
+│   └── friction_study.py      # friction calibrated on set2, tested on set4a/b
 ├── figures/                   # generated PNGs (validation/ holds the comparison set)
 ├── VALIDATION_REPORT.md       # what the measurements say about the model
-└── tests/test_ctr.py          # 77 verification tests
+└── tests/test_ctr.py          # 90 verification tests
 ```
 
 ## Quick start
@@ -276,12 +285,13 @@ rather than against itself:
 | Distributed load | integrates to its resultant at the base |
 | Axial moment balance | `Σ GJ_i u_i,z = (R e3)·m` pointwise — an exact identity |
 | `GJ → ∞` | recovers the torsionally rigid constant-curvature model |
+| Friction | preserves the axial moment balance exactly; zero for co-rotation |
 | Inextensibility | `|p'| = 1`; chord deficit only the expected O(h²) |
 | Snap-through | full 360° sweeps solve at every deployment |
 
 ```
 $ python3 tests/test_ctr.py
-Ran 77 tests in 71s
+Ran 90 tests in 88s
 OK
 ```
 
@@ -295,9 +305,11 @@ against 18 hardware trials — verification (is the maths right?) and validation
   biggest source of absolute error; fit `E` before quoting numbers.
 * **Zero clearance.** The 0.25 mm per-side gap between the tubes is ignored.
   Real tubes can lag each other slightly, which matters most at short overlap.
-* **Frictionless.** No tube-to-tube or tube-to-guide friction, and no
-  hysteresis. Real windup shows both, so measured rotation will lag the model's
-  and will not retrace on the way back.
+* **Friction is optional and coarse.** `ctr/friction.py` adds Coulomb friction
+  at both contacts, but with a single sliding sense per commanded step — right
+  on a monotonic leg, wrong where the local sliding reverses part way through,
+  which is what a 0 → 180° sweep does. A stick–slip complementarity solve is
+  what would make its sign trustworthy. Default is frictionless.
 * **Statics only.** No dynamics, no drilling process model — the drilling
   reaction is an input wrench you supply, not something the model predicts.
 * **The guide is perfectly rigid and straight**, and the transition at its exit
@@ -314,6 +326,9 @@ The prediction flagged here before the comparison was run — that the model
 would over-predict windup if the tubes are supported over more of their
 retracted length than the free-twist assumption allows — is what the data
 shows: the model over-predicts the loss on every configuration where windup
-acts (20 % vs 33 % delivered on `set4a`, 84 % vs 99 % on `set3a`). Adding
-friction to the transmission is the single highest-value model improvement
-outstanding.
+acts (20 % vs 33 % delivered on `set4a`, 84 % vs 99 % on `set3a`).
+
+Friction was the obvious candidate and has since been implemented and tested
+(§9). It does *not* simply close that gap: its sign is configuration-dependent,
+helping `set4a` and hurting `set4b`. The outstanding experiment is the
+hysteresis sweep, which would settle it.

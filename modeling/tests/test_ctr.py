@@ -25,7 +25,8 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from ctr import (  # noqa: E402
-    DEFAULT_CONFIG, CTSDR, CosseratModel, ExternalLoad, Joints, ShootingError, Tube,
+    DEFAULT_CONFIG, MU_NITINOL_NITINOL, MU_STEEL_NITINOL, NO_FRICTION, CTSDR,
+    CosseratModel, ExternalLoad, FrictionModel, Joints, ShootingError, Tube,
 )
 from ctr.robot import INNER, OUTER  # noqa: E402
 
@@ -401,6 +402,157 @@ class TestAxialMomentBalance(unittest.TestCase):
             self.robot.solve(j, load=load)
 
 
+class TestFriction(unittest.TestCase):
+    """Coulomb friction between the tubes and against the guide.
+
+    These tests pin behaviour *at a fixed pose*, part way through winding up.
+    There friction is a pure torque sink between the actuator and the deployed
+    section, so it reduces the roll reaching the tip -- and at the a-priori dry
+    coefficients it does so by only ~0.27 deg out of 14 deg (~2 %), moving the
+    tip about 12 microns.
+
+    Do not read that as friction being small or one-signed over a whole
+    manoeuvre.  Calibrated against `set2` (where guide friction is the only
+    loss mechanism the model has) and swept through a full 180 deg, it changes
+    the tip's swept angle by tens of degrees, and the sign flips between sets
+    because the deployed section winds and then unwinds.  See
+    VALIDATION_REPORT.md section 9.
+    """
+
+    def setUp(self):
+        self.robot = CTSDR.from_yaml()
+        self.j = Joints(ott=35, itt=35, itr=90)
+
+    def _friction(self, mu=0.35, direction=1.0, scale=1.0):
+        f = FrictionModel(mu_tube_tube=mu, mu_guide=0.25, direction=direction,
+                          force_scale=scale)
+        f.guide_normal_force = FrictionModel.estimate_guide_force(
+            self.robot.tubes[INNER], 0.15)
+        return f
+
+    def test_disabled_friction_reproduces_the_frictionless_solution(self):
+        base = self.robot.solve(self.j)
+        off = (None, NO_FRICTION, self._friction(direction=0.0),
+               self._friction(scale=0.0),
+               FrictionModel(mu_tube_tube=0.0, mu_guide=0.0))
+        for f in off:
+            sol = self.robot.solve(self.j, friction=f)
+            np.testing.assert_allclose(sol.tip_position, base.tip_position, atol=1e-9)
+
+    def test_zeroing_only_the_tube_tube_coefficient_leaves_guide_friction(self):
+        """Two independent contacts; killing one must not kill the other."""
+        base = self.robot.solve(self.j)
+        guide_only = self._friction(mu=0.0)   # mu_guide is still 0.25
+        self.assertFalse(guide_only.is_zero)
+        sol = self.robot.solve(self.j, friction=guide_only)
+        self.assertGreater(np.linalg.norm(sol.tip_position - base.tip_position), 1e-9)
+
+    def test_contact_force_vanishes_at_natural_curvature(self):
+        from ctr.friction import contact_force_per_length
+        self.assertEqual(contact_force_per_length(20.0, 0.2, (20.0, 0.0), (20.0, 0.0)), 0.0)
+        self.assertEqual(contact_force_per_length(0.0, 0.2, (5.0, 0.0), (20.0, 0.0)), 0.0)
+        self.assertGreater(contact_force_per_length(20.0, 0.2, (5.0, 0.0), (20.0, 0.0)), 0.0)
+
+    def test_contact_force_scales_with_curvature_squared_and_mismatch(self):
+        from ctr.friction import contact_force_per_length
+        a = contact_force_per_length(10.0, 0.2, (0.0, 0.0), (20.0, 0.0))
+        b = contact_force_per_length(20.0, 0.2, (0.0, 0.0), (20.0, 0.0))
+        self.assertAlmostEqual(b / a, 4.0, places=9)
+        c = contact_force_per_length(10.0, 0.2, (0.0, 0.0), (40.0, 0.0))
+        self.assertAlmostEqual(c / a, 2.0, places=9)
+
+    def test_friction_preserves_the_axial_moment_balance(self):
+        """Friction moves torque between tubes; it must not create any."""
+        sol = self.robot.solve(self.j, friction=self._friction())
+        k_t = np.array([t.torsional_stiffness for t in self.robot.tubes])
+        torque = np.nansum(np.nan_to_num(sol.u_z) * k_t, axis=1)
+        np.testing.assert_allclose(torque, 0.0, atol=1e-9)
+
+    def test_friction_costs_delivered_roll_at_a_fixed_winding_pose(self):
+        """Held part way through winding up, friction is a pure torque sink.
+
+        Scoped deliberately to one pose on the winding leg -- see the class
+        docstring for why the sign does not survive a whole manoeuvre.
+        """
+        free = self.robot.solve(self.j)
+        rubbed = self.robot.solve(self.j, friction=self._friction())
+        both = ~np.isnan(free.theta[:, OUTER])
+        last = np.flatnonzero(both)[-1]
+
+        def delivered(sol):
+            return abs(sol.theta[last, INNER] - sol.theta[last, OUTER])
+
+        self.assertLess(delivered(rubbed), delivered(free))
+
+    def test_more_friction_means_less_delivered(self):
+        free = self.robot.solve(self.j)
+        prev = abs(free.theta[-1, INNER] - free.theta[-1, OUTER])
+        for mu in (0.15, 0.35, 0.6):
+            sol = self.robot.solve(self.j, friction=self._friction(mu=mu))
+            now = abs(sol.theta[-1, INNER] - sol.theta[-1, OUTER])
+            self.assertLessEqual(now, prev + 1e-9)
+            prev = now
+
+    def test_reversing_the_sliding_direction_changes_the_answer(self):
+        """The signature of hysteresis: the two directions do not agree.
+
+        The gap is only a few microns at realistic coefficients -- friction is
+        a very small effect on this robot (see the class docstring and
+        VALIDATION_REPORT.md §9) -- but it is non-zero and it has a sign.
+        """
+        fwd = self.robot.solve(self.j, friction=self._friction(direction=+1.0))
+        rev = self.robot.solve(self.j, friction=self._friction(direction=-1.0))
+        self.assertGreater(
+            np.linalg.norm(fwd.tip_position - rev.tip_position), 1e-7)
+
+    def test_co_rotation_derives_zero_sliding(self):
+        """set3b's manoeuvre: both tubes turn together, so nothing rubs.
+
+        ``solve_path`` derives the sliding sense from the change in *relative*
+        roll, so a co-rotation gets ``direction = 0`` on its own.  A bare
+        ``solve`` cannot know that -- the caller owns the sense there.
+        """
+        path = [Joints(ott=35, itt=35, otr=a, itr=a) for a in (0.0, 45.0, 90.0)]
+        free = self.robot.solve_path(path)
+        rubbed = self.robot.solve_path(path, friction=self._friction())
+        np.testing.assert_allclose(rubbed[-1].tip_position, free[-1].tip_position,
+                                   atol=1e-9)
+
+    def test_a_lone_deployed_tube_still_rubs_on_the_guide(self):
+        """set2's configuration: only the inner tube is out, and it still loses.
+
+        There is no second tube to rub against, so the frictionless model
+        predicts a *perfect* 360 deg with zero windup -- it has no mechanism
+        for the 8.2 deg the tracker actually recorded.  Friction against the
+        guide bore is the one mechanism in the model that produces any loss
+        here at all.
+        """
+        j = Joints(ott=0, itt=35, itr=120)
+        free = self.robot.solve(j)
+        np.testing.assert_allclose(free.u_z0[INNER], 0.0, atol=1e-12)
+
+        rubbed = self.robot.solve(j, friction=self._friction())
+        self.assertGreater(abs(rubbed.theta[0, INNER] - free.theta[0, INNER]), 1e-4)
+
+    def test_wet_coefficients_are_lower_than_dry(self):
+        dry, wet = FrictionModel.dry(), FrictionModel.lubricated()
+        self.assertLess(wet.mu_tube_tube, dry.mu_tube_tube)
+        self.assertLess(wet.mu_guide, dry.mu_guide)
+        self.assertAlmostEqual(dry.mu_tube_tube, MU_NITINOL_NITINOL, places=9)
+        self.assertAlmostEqual(dry.mu_guide, MU_STEEL_NITINOL, places=9)
+
+    def test_nitinol_on_nitinol_rubs_harder_than_on_steel(self):
+        """NiTi-NiTi is adhesive and galls; that ordering is not incidental."""
+        self.assertGreater(MU_NITINOL_NITINOL, MU_STEEL_NITINOL)
+
+    def test_guide_force_estimate_falls_with_grip_length(self):
+        t = self.robot.tubes[INNER]
+        short = FrictionModel.estimate_guide_force(t, 0.05)
+        long_ = FrictionModel.estimate_guide_force(t, 0.20)
+        self.assertGreater(short, long_)
+        self.assertEqual(FrictionModel.estimate_guide_force(t, 0.0), 0.0)
+
+
 class TestMaterialLimits(unittest.TestCase):
     """The linear-elastic model has to say when it is being extrapolated."""
 
@@ -569,9 +721,15 @@ class TestCTSDRConfig(unittest.TestCase):
         """
         np.testing.assert_allclose(self.robot.signs, [1.0, 1.0, -1.0, -1.0])
 
-    def test_radius_of_curvature_is_50_mm(self):
+    def test_radius_of_curvature_is_the_measured_57_mm(self):
+        """Measured on the free tubes, superseding the 50 mm in the spec.
+
+        The NDI advances imply ~39.5 mm for the *inner* tube, which this
+        contradicts; see VALIDATION_REPORT.md section 10.  The config carries
+        the direct measurement and the report carries the disagreement.
+        """
         for t in self.robot.tubes:
-            self.assertAlmostEqual(1.0 / t.curvature * 1e3, 50.0, places=6)
+            self.assertAlmostEqual(1.0 / t.curvature * 1e3, 57.0, places=6)
 
     def test_inner_tube_fits_inside_the_outer_bore(self):
         outer, inner = self.robot.tubes
