@@ -329,9 +329,22 @@ $\theta_i'=u_{i,z}$ from $\beta_i$ to $0$,
 
 $$\boxed{\ \theta_i(0)=\alpha_i-\beta_i\,u_{i,z}(0)\ } \tag{9.3}$$
 
-($\beta_i\le 0$, so this *adds* windup). On this robot the term dominates: at
+($\beta_i\le 0$, so this *adds* windup.) On this robot the term dominates: at
 ITT = 35 mm the inner tube has ~273 mm of torsionally free transmission against
 35 mm of deployed length.
+
+The actuator angle carries a **datum offset**,
+
+$$\alpha_i=\varsigma_i\,(\text{commanded angle})+\phi_i , \tag{9.3a}$$
+
+because the rotation joints have no absolute reference: homing zeroes whatever
+position the tube currently sits at, so $\phi_i$ is whatever the pre-curvature
+plane happened to be at homing. Only the difference
+$\psi_0=\phi_{\text{in}}-\phi_{\text{out}}$ is physical — a common offset
+rigidly rolls the whole robot about $\mathbf e_3$ — and it can differ between
+sessions. Note that (9.3) then *absorbs* most of $\psi_0$: a clamp offset is
+wound into the transmission just as a commanded rotation is, so the advances are
+nearly blind to it and it has to be identified from the rotation segments.
 
 With guide friction the torque is largest at the actuator and bleeds off
 distally, $|T_i(s)|=|T_i(0)|+\tau_i^{f}|s|$, so integrating $T_i/k_{ti}$ adds a

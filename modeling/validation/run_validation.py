@@ -94,6 +94,30 @@ FITTED = dict(R_outer=57.0, S_outer=0.0, R_inner=39.51,
               home_outer=0.0, home_inner=2.90)
 
 
+#: Initial relative roll of the two tubes' pre-curvature planes when the
+#: rotation joints read zero, per experiment set [deg].  The rotation joints
+#: have no absolute datum -- ``home <joint>`` zeroes wherever the tube sits --
+#: so this is a property of each session, not of the hardware, and there is no
+#: reason for it to be zero or to be the same twice.
+#:
+#: Identified by ``validation/calibrate_roll.py`` on **frame-invariant**
+#: metrics (turn angles, swept angles).  It must not be fitted on the
+#: registration residual: a rigid transform absorbs a wrong shape, and doing so
+#: picks psi0 = -180 for `set4a` while driving its traced arc radius to 132 mm
+#: against a measured 62.5 mm.
+#:
+#: `set2` is left at zero because it deploys only the inner tube -- there is no
+#: relative roll to identify, and its score is exactly flat.
+ROLL_OFFSETS = {
+    "set1": 170.0,
+    "set2": 0.0,
+    "set3a": 170.0,
+    "set3b": 170.0,
+    "set4a": -170.0,
+    "set4b": -60.0,
+}
+
+
 # --- robot construction -----------------------------------------------------
 
 def build_robot(R_outer: float, S_outer: float, R_inner: float,
@@ -317,7 +341,7 @@ def fig_trial(tr, es, cmp_spec, cmp_fit, path):
     ax_d = fig.add_subplot(gs[1, :2])
     prog = np.arange(len(best["dev"]))
     for cmp_, colour, lab in ((cmp_spec, vs.NEUTRAL, "measured tubes (R = 57 mm)"),
-                              (cmp_fit, vs.SERIES[2], "identified (57 out / 39.5 in)")):
+                              (cmp_fit, vs.SERIES[2], "identified (geometry + roll)")):
         if cmp_ is None:
             continue
         ax_d.plot(prog, cmp_["dev"], color=colour, lw=2.0, label=lab)
@@ -458,7 +482,7 @@ def fig_rotation_delivery(records, path):
     w = 0.26
     for off, vals, colour, lab in ((-w, meas, vs.SERIES[0], "measured"),
                                    (0.0, spec, vs.NEUTRAL, "model, measured R = 57 mm"),
-                                   (w, fit, vs.SERIES[1], "model, identified geometry")):
+                                   (w, fit, vs.SERIES[1], "model, identified")):
         ax_b.bar(xs + off, vals, width=w - 0.03, color=colour, label=lab, zorder=3)
     ax_b.axhline(100.0, color=vs.INK_2, lw=1.0, ls=(0, (4, 3)), zorder=2)
     ax_b.set_xticks(xs)
@@ -472,7 +496,7 @@ def fig_rotation_delivery(records, path):
     ax_s.scatter(spec, meas, s=54, color=vs.NEUTRAL, zorder=3,
                  edgecolors=vs.SURFACE, linewidths=1.2, label="measured R = 57 mm")
     ax_s.scatter(fit, meas, s=54, color=vs.SERIES[1], zorder=4,
-                 edgecolors=vs.SURFACE, linewidths=1.2, label="identified (57 out / 39.5 in)")
+                 edgecolors=vs.SURFACE, linewidths=1.2, label="identified (geometry + roll)")
     lim = [0, max(max(meas), max(spec), max(fit)) * 1.12 + 5]
     ax_s.plot(lim, lim, color=vs.INK_2, lw=1.0, ls=(0, (4, 3)), zorder=2)
     for x_, y_, lab in zip(fit, meas, labels):
@@ -503,7 +527,7 @@ def fig_summary_error(records, path):
     xs = np.arange(len(keys))
     w = 0.34
     for off, field, colour, lab in ((-w / 2, "spec_rms", vs.NEUTRAL, "measured tubes (R = 57 mm, no lead-in)"),
-                                    (w / 2, "fit_rms", vs.SERIES[1], "identified (57 out / 39.5 in)")):
+                                    (w / 2, "fit_rms", vs.SERIES[1], "identified (geometry + roll)")):
         vals, errs = [], []
         for k in keys:
             v = [r[field] for r in records if r["set"] == k and r["step"] == 1]
@@ -565,9 +589,15 @@ def main(argv=None):
           f"S_outer={params['S_outer']:.1f}  R_inner={params['R_inner']:.1f}")
 
     records = []
+    print("\nper-set initial relative roll (deg), from calibrate_roll.py:")
+    print("   " + "  ".join(f"{k}={v:+.0f}" for k, v in ROLL_OFFSETS.items()))
     print("\nper-trial comparison")
     print(f"  {'trial':8s}{'set':7s}{'RMS spec':>10s}{'RMS fit':>9s}   steps")
     for es in sets:
+        # Baseline keeps the naive "aligned at zero" assumption; the identified
+        # model uses the per-set roll offset alongside the fitted geometry.
+        robot_spec.roll_offsets = np.zeros(2)
+        robot_fit.roll_offsets = np.radians([0.0, ROLL_OFFSETS.get(es.key, 0.0)])
         p_spec, sl_spec, _ = X.model_trajectory(robot_spec, es, args.n_per_step, args.advance)
         p_fit, sl_fit, _ = X.model_trajectory(robot_fit, es, args.n_per_step, args.advance)
         for label, _ in es.trials:
@@ -606,7 +636,7 @@ def main(argv=None):
     made = {
         "curvature_profile.png": fig_curvature_profile(
             trials, {"model, measured R = 57 mm": robot_spec,
-                     "model, identified geometry": robot_fit},
+                     "model, identified": robot_fit},
             os.path.join(args.out_dir, "curvature_profile.png")),
         "rotation_delivery.png": fig_rotation_delivery(
             records, os.path.join(args.out_dir, "rotation_delivery.png")),

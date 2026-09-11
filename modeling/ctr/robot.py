@@ -76,6 +76,14 @@ class CTSDR:
         guide exit.
     signs
         Multipliers applied to ``(ott, itt, otr, itr)``.
+    roll_offsets
+        Roll of each tube's pre-curvature plane when its rotation joint reads
+        zero [rad].  **Not a nuisance parameter -- the rotation joints have no
+        absolute reference.**  ``dxl_control_4dof_cli.py``'s ``home <joint>``
+        zeroes *wherever the tube currently is*, so OTR = ITR = 0 means "homed
+        here", not "pre-curvatures aligned".  The offset that matters is the
+        difference ``roll_offsets[INNER] - roll_offsets[OUTER]``; it can differ
+        between sessions and must be calibrated per experiment.
     """
 
     def __init__(
@@ -84,6 +92,7 @@ class CTSDR:
         inner: Tube,
         base_offsets: Optional[Sequence[float]] = None,
         signs: Sequence[float] = (1.0, 1.0, 1.0, 1.0),
+        roll_offsets: Optional[Sequence[float]] = None,
     ):
         self.tubes = [outer, inner]
         self.model = CosseratModel(self.tubes)
@@ -92,6 +101,8 @@ class CTSDR:
         else:
             self.base_offsets = np.asarray(base_offsets, dtype=float)
         self.signs = np.asarray(signs, dtype=float)
+        self.roll_offsets = (np.zeros(2) if roll_offsets is None
+                             else np.asarray(roll_offsets, dtype=float))
 
     # -- construction -------------------------------------------------------
 
@@ -105,7 +116,7 @@ class CTSDR:
         nu = float(mat["poisson_ratio"])
         rho = float(mat.get("density_kg_m3", 6450.0))
 
-        tubes, offsets = [], []
+        tubes, offsets, rolls = [], [], []
         for name in ("outer", "inner"):
             t = cfg["tubes"][name]
             od = float(t["outer_diameter_mm"]) * 1e-3
@@ -128,6 +139,7 @@ class CTSDR:
             )
             off = t.get("base_offset_mm")
             offsets.append(-length if off is None else float(off) * 1e-3)
+            rolls.append(np.radians(float(t.get("roll_offset_deg", 0.0))))
 
         if tubes[INNER].outer_diameter > tubes[OUTER].inner_diameter:
             raise ValueError(
@@ -142,7 +154,8 @@ class CTSDR:
             float(j.get("otr_sign", 1.0)),
             float(j.get("itr_sign", 1.0)),
         )
-        return cls(tubes[OUTER], tubes[INNER], base_offsets=offsets, signs=signs)
+        return cls(tubes[OUTER], tubes[INNER], base_offsets=offsets, signs=signs,
+                   roll_offsets=rolls)
 
     # -- joint mapping ------------------------------------------------------
 
@@ -151,7 +164,7 @@ class CTSDR:
         ott, itt, otr, itr = joints.as_tuple()
         s = self.signs
         betas = self.base_offsets + np.array([s[0] * ott, s[1] * itt]) * 1e-3
-        alphas = np.radians([s[2] * otr, s[3] * itr])
+        alphas = np.radians([s[2] * otr, s[3] * itr]) + self.roll_offsets
         return betas, alphas
 
     def deployed_lengths(self, joints: Joints) -> np.ndarray:

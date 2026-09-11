@@ -824,6 +824,92 @@ class TestCTSDRConfig(unittest.TestCase):
         _, alphas = flipped.joints_to_model(Joints(ott=35, itt=35, otr=30, itr=90))
         np.testing.assert_allclose(np.degrees(alphas), [-30.0, -90.0], atol=1e-9)
 
+    def test_roll_offset_shifts_the_commanded_angles(self):
+        """The rotation joints have no absolute reference.
+
+        `dxl_control_4dof_cli.py`'s ``home <joint>`` zeroes wherever the tube
+        currently sits, so OTR = ITR = 0 means "homed here", not "pre-curvatures
+        aligned".  ``roll_offsets`` carries the difference; only the *relative*
+        offset between the tubes is physical.
+        """
+        outer, inner = self.robot.tubes
+        shifted = CTSDR(outer, inner, base_offsets=self.robot.base_offsets,
+                        signs=self.robot.signs,
+                        roll_offsets=np.radians([0.0, 40.0]))
+        _, base = self.robot.joints_to_model(Joints(ott=35, itt=35, itr=25))
+        _, moved = shifted.joints_to_model(Joints(ott=35, itt=35, itr=25))
+        np.testing.assert_allclose(np.degrees(moved - base), [0.0, 40.0], atol=1e-9)
+
+    def test_a_common_roll_offset_is_a_rigid_roll_not_a_shape_change(self):
+        """Only the relative offset changes the shape; a common one rotates it."""
+        outer, inner = self.robot.tubes
+        phi = np.radians(35.0)
+        common = CTSDR(outer, inner, base_offsets=self.robot.base_offsets,
+                       signs=self.robot.signs, roll_offsets=[phi, phi])
+        j = Joints(ott=35, itt=35, itr=70)
+        base = self.robot.solve(j)
+        rolled = common.solve(j)
+        c, s = np.cos(phi), np.sin(phi)
+        Rz = np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])
+        np.testing.assert_allclose(rolled.tip_position, Rz @ base.tip_position,
+                                   atol=1e-8)
+
+    def test_config_roll_offset_is_read(self):
+        import tempfile
+
+        import yaml as _yaml
+        with open(DEFAULT_CONFIG) as fh:
+            cfg = _yaml.safe_load(fh)
+        cfg["tubes"]["inner"]["roll_offset_deg"] = 55.0
+        with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as fh:
+            _yaml.safe_dump(cfg, fh)
+            path = fh.name
+        try:
+            robot = CTSDR.from_yaml(path)
+            self.assertAlmostEqual(np.degrees(robot.roll_offsets[INNER]), 55.0, places=9)
+            self.assertAlmostEqual(robot.roll_offsets[OUTER], 0.0, places=12)
+        finally:
+            os.unlink(path)
+
+    def test_windup_absorbs_most_of_a_clamp_roll_offset(self):
+        """A misalignment at the clamp barely reaches the deployed section.
+
+        This is why the *advances* are nearly blind to it and the identification
+        has to come from the rotation segments — see
+        validation/calibrate_roll.py and VALIDATION_REPORT.md section 11.
+        """
+        outer, inner = self.robot.tubes
+        psi = np.radians(90.0)
+        offset = CTSDR(outer, inner, base_offsets=self.robot.base_offsets,
+                       signs=self.robot.signs, roll_offsets=[0.0, psi])
+        sol = offset.solve(Joints(ott=35, itt=35))
+        delivered = abs(sol.theta[-1, INNER] - sol.theta[-1, OUTER])
+        self.assertLess(delivered, 0.35 * psi)   # most of it is wound away
+        self.assertGreater(delivered, 0.0)
+
+    def test_roll_offset_only_bites_near_the_anti_aligned_state(self):
+        """Windup hides a clamp offset everywhere except right at 180 deg.
+
+        The deployed shape is essentially unchanged for offsets from 0 to
+        175 deg -- the transmission absorbs them -- and then changes abruptly at
+        180 deg, where anti-alignment is a zero-torque equilibrium so there is
+        nothing to absorb.  That cliff is why psi0 is hard to identify and why
+        the sign of a near-180 deg offset matters so much
+        (VALIDATION_REPORT.md section 11).
+        """
+        outer, inner = self.robot.tubes
+
+        def curvature(psi_deg):
+            r = CTSDR(outer, inner, base_offsets=self.robot.base_offsets,
+                      signs=self.robot.signs,
+                      roll_offsets=np.radians([0.0, psi_deg]))
+            sol = r.solve(Joints(ott=35, itt=35))
+            return float(np.hypot(sol.u[0, 0], sol.u[0, 1]))
+
+        flat = [curvature(a) for a in (0.0, 60.0, 120.0, 175.0)]
+        self.assertLess(max(flat) - min(flat), 0.05 * flat[0])   # < 5 % spread
+        self.assertLess(curvature(180.0), 0.6 * flat[0])         # then a cliff
+
     def test_check_rejects_over_deployment(self):
         with self.assertRaises(ValueError):
             self.robot.check(Joints(ott=100, itt=100))

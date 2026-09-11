@@ -61,6 +61,17 @@ guide:
   material: stainless_steel
   rigid: true
 
+  # roll_offset_deg (per tube, under `tubes:` above) is the roll of that tube's
+  # pre-curvature plane when its rotation joint reads zero.  It defaults to 0,
+  # i.e. "the two tubes' curves are aligned at OTR = ITR = 0" -- which is an
+  # ASSUMPTION, not a fact: dxl_control_4dof_cli.py's `home <joint>` zeroes
+  # wherever the tube currently sits, so the offset is whatever it happened to
+  # be at homing and can differ between sessions.  Only the difference between
+  # the two tubes is physical; a common offset just rolls the whole robot.
+  #
+  # Run `python3 validation/calibrate_roll.py` to identify it against tip data.
+  # Left at zero here because it belongs to a session, not to the hardware.
+
 joints:
   # Sign conventions matching dxl_control_4dof_cli.py / the ROS1 nodes.
   # Positive translation advances the tube out of the guide.
