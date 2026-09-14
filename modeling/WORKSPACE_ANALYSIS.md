@@ -14,7 +14,7 @@ We analyze three fundamental configurations:
 2. **Outer tube alone** ($0 \le q_{\mathrm{OTT}} \le 46\ \text{mm}$, inner tube retracted/flush).
 3. **Both tubes combined** ($0 \le q_{\mathrm{OTT}} \le 46\ \text{mm}$, $q_{\mathrm{OTT}} \le q_{\mathrm{ITT}} \le 83\ \text{mm}$, arbitrary differential roll $\Delta\alpha = q_{\mathrm{ITR}} - q_{\mathrm{OTR}}$).
 
-A key theoretical finding of this analysis is the **manifold dimension expansion**: a single pre-curved tube possessing two degrees of freedom generates a **two-dimensional surface of revolution** (with zero enclosed volume in $\mathbb{R}^3$), whereas the coupled 4-DoF system, mediated by nonlinear Cosserat rod mechanics and curvature superposition, spans a **solid three-dimensional annular volume of $185.0\ \text{cm}^3$** ($185,036\ \text{mm}^3$).
+A key theoretical finding of this analysis is the **manifold dimension expansion**: a single pre-curved tube possessing two degrees of freedom generates a **two-dimensional surface of revolution** (with zero enclosed volume in $\mathbb{R}^3$), whereas the coupled 4-DoF system, mediated by nonlinear Cosserat rod mechanics and curvature superposition, spans a **solid three-dimensional annular volume of $240.8\ \text{cm}^3$** ($240,799\ \text{mm}^3$).
 
 ---
 
@@ -256,13 +256,13 @@ The quantitative characteristics across all three configurations are summarized 
 | **Active Degrees of Freedom** | DoF | $2$ ($q_{\mathrm{ITT}}, q_{\mathrm{ITR}}$) | $2$ ($q_{\mathrm{OTT}}, q_{\mathrm{OTR}}$) | **$4$** ($q_{\mathrm{OTT}}, q_{\mathrm{ITT}}, q_{\mathrm{OTR}}, q_{\mathrm{ITR}}$) | – |
 | **Maximum Translation Stroke** | $q_{\max}$ | $83.0$ | $46.0$ | Outer: $46.0$, Inner: $83.0$ | $\text{mm}$ |
 | **Maximum Radial Reach** | $r_{\max}$ | $50.48$ | $17.58$ | **$50.48$** | $\text{mm}$ |
-| **Maximum Axial Reach** | $z_{\max}$ | $56.63$ | $41.17$ | **$69.12$** | $\text{mm}$ |
+| **Maximum Axial Reach** | $z_{\max}$ | $56.63$ | $41.17$ | **$79.63$** | $\text{mm}$ |
 | **Minimum Axial Reach** | $z_{\min}$ | $0.0$ | $0.0$ | **$2.00$** | $\text{mm}$ |
 | **Maximum Tip Deflection** | $\psi_{\max}$ | $83.43^\circ$ | $46.24^\circ$ | **$83.43^\circ$** | $\text{deg}$ |
-| **Reachable 2D Meridian Area** | $A_{\mathcal{D}_{rz}}$ | $0.0$ (1D curve) | $0.0$ (1D curve) | **$1,326.0$** | $\text{mm}^2$ |
-| **Meridian Radial Centroid** | $r_c$ | – | – | **$22.20$** | $\text{mm}$ |
-| **Reachable 2D Surface Area** | $A_{\mathrm{ws}}$ | **$9,446$** | **$1,731$** | Boundary: $\approx 15,000$ | $\text{mm}^2$ |
-| **Enclosed 3D Workspace Volume** | $V$ | **$0.0$** (2D manifold) | **$0.0$** (2D manifold) | **$185,036$** ($185.0\ \text{cm}^3$) | $\text{mm}^3$ |
+| **Reachable 2D Meridian Area** | $A_{\mathcal{D}_{rz}}$ | $0.0$ (1D curve) | $0.0$ (1D curve) | **$1,973.0$** | $\text{mm}^2$ |
+| **Meridian Radial Centroid** | $r_c$ | – | – | **$19.40$** | $\text{mm}$ |
+| **Reachable 2D Surface Area** | $A_{\mathrm{ws}}$ | **$9,446$** | **$1,731$** | Boundary: $\approx 18,200$ | $\text{mm}^2$ |
+| **Enclosed 3D Workspace Volume** | $V$ | **$0.0$** (2D manifold) | **$0.0$** (2D manifold) | **$240,799$** ($240.8\ \text{cm}^3$) | $\text{mm}^3$ |
 
 ---
 
@@ -291,7 +291,7 @@ The quantitative characteristics across all three configurations are summarized 
 ### 4.4 Detailed Analysis of Case 3: Both Tubes Combined (4-DoF Coupled System)
 
 - **Manifold Dimension Expansion ($2\text{D} \to 3\text{D}$):**
-  When both tubes are deployed together, the 4 independent joint variables ($q_{\mathrm{OTT}}, q_{\mathrm{ITT}}, q_{\mathrm{OTR}}, q_{\mathrm{ITR}}$) map into a **3-dimensional task space** ($\mathbb{R}^3$). The tip workspace is no longer a hollow shell; it becomes a **solid 3D annular volume of $185.0\ \text{cm}^3$** ([`figures/workspace_both_tubes.png`](figures/workspace_both_tubes.png)).
+  When both tubes are deployed together, the 4 independent joint variables ($q_{\mathrm{OTT}}, q_{\mathrm{ITT}}, q_{\mathrm{OTR}}, q_{\mathrm{ITR}}$) map into a **3-dimensional task space** ($\mathbb{R}^3$). The tip workspace is no longer a hollow shell; it becomes a **solid 3D annular volume of $240.8\ \text{cm}^3$** ($240,799\ \text{mm}^3$) ([`figures/workspace_both_tubes.png`](figures/workspace_both_tubes.png)).
 
 - **Mechanisms of Volume Generation:**
   1. **Differential Translation ($\Delta L = q_{\mathrm{ITT}} - q_{\mathrm{OTT}}$):** Adjusting the length of the overlapping segment relative to the free distal inner segment continuously shifts the transition knot along the backbone.
@@ -299,16 +299,47 @@ The quantitative characteristics across all three configurations are summarized 
      $$
      \kappa_{\mathrm{net}} = \frac{k_{b,\mathrm{out}} - k_{b,\mathrm{in}}}{k_{b,\mathrm{out}} + k_{b,\mathrm{in}}}\,\kappa_0 = \frac{3.395 - 1}{3.395 + 1}\,(17.54) \approx 9.56\ \text{m}^{-1} \quad (R_{\mathrm{eff}} \approx 104.6\ \text{mm})
      $$
-  3. **Torsional Compliance & Windup:** The inner tube's straight transmission length ($-\beta_{\mathrm{in}} \approx 308 - 83 = 225\ \text{mm}$) absorbs a substantial portion of the commanded base rotation, resulting in smooth, non-singular curvature modulation and continuous interior volume coverage.
+  3. **Antagonistic Curvature Inversion (The S-Shape Phenomenon):**
+     When the outer tube is rotated to $q_{\mathrm{OTR}} = 180^\circ$ and the inner tube is at $q_{\mathrm{ITR}} = 0^\circ$ ($\Delta\alpha = 180^\circ$), the two tubes bend in strictly opposite directions:
+     - In the overlapping base segment ($s \in [0, q_{\mathrm{OTT}}]$), the stiffer outer tube ($3.4\times$ higher flexural rigidity) dominates, bending outward toward $+y$ (reaching apex $+6.17\ \text{mm}$ when $q_{\mathrm{OTT}} = 29\ \text{mm}$).
+     - At $s = q_{\mathrm{OTT}}$, the outer tube terminates. The inner tube emerges into free space without constraint and immediately reverts to its intrinsic precurvature, bending inward toward $-y$.
+     - This creates a strict **inflection point** ($d^2 y / ds^2$ changes sign) at the outer tube tip. With sufficient extension ($q_{\mathrm{ITT}} - q_{\mathrm{OTT}} = 54\ \text{mm}$), the inner tube curves all the way back across the central $z$-axis ($y = 0$), ending at $y = -6.16\ \text{mm}$ with equal and opposite peak deflection. This forms an exquisitely balanced **S-curve**.
+     > [!NOTE]
+     > **Why the S-Shape is Folded in Meridian Cross-Section $(r, z)$:**
+     > In cylindrical coordinates, radial reach is defined as $r = \sqrt{x^2 + y^2} = |y| \ge 0$. Because $r$ is non-negative, any trajectory that inflects across the central axis $y = 0$ is folded over at $r = 0$, appearing as a V-shaped reflection in the 2D $(r, z)$ meridian plane. In the 3D cutaway (and in the interactive 3D viewer when viewed in the $y$-$z$ elevation plane via Key '2'), the true, continuous S-shape with its outward and inward curvature is completely revealed.
+
+  4. **Torsional Compliance & Windup:** The inner tube's straight transmission length absorbs a significant fraction of commanded base rotation, preventing abrupt discontinuities and providing smooth, non-singular interior volume coverage.
 
 - **Axial Expansion Beyond Single Tubes:**
-  Notice that $z_{\max}$ for both tubes combined is **$68.99\ \text{mm}$**, which is **$12.36\ \text{mm}$ greater** than the inner tube alone ($56.63\ \text{mm}$). This occurs because when the outer and inner tubes are rotated antagonistically ($\Delta\alpha = 180^\circ$), the overlapping segment straightens out considerably, projecting the distal tip further forward along $+z$ before the inner tube curves.
+  Notice that $z_{\max}$ for both tubes combined reaches **$79.63\ \text{mm}$**, which is **$23.0\ \text{mm}$ greater** than the inner tube alone ($56.63\ \text{mm}$) and nearly matches the full axial inner stroke ($83\ \text{mm}$). This occurs precisely because the antagonistic S-curve straightens the base segment and projects the inner tube near-vertically along $+z$.
+
+---
+
+### 4.5 Extreme Boundary Poses in the Meridian Cross-Section
+
+To illuminate the robot's physical morphology at critical workspace extremes, six landmark configurations are analyzed and labeled with clean circular badges $\mathbf{1}$ to $\mathbf{6}$ on the meridian cross-section $\mathcal{D}_{rz}$ and the 3D cutaway volume ([`figures/workspace_both_tubes.png`](figures/workspace_both_tubes.png)):
+
+| Pose | Landmark Identification | Joint Configuration $(q_{\mathrm{OTT}}, q_{\mathrm{ITT}}, q_{\mathrm{OTR}}, q_{\mathrm{ITR}})$ | Tip Position $(r, z)$ | Morphological & Clinical Significance |
+| :---: | :--- | :---: | :---: | :--- |
+| **1** | **Aligned Maximum Bending** | $(46.0\ \text{mm}, 83.0\ \text{mm}, 0^\circ, 0^\circ)$ | $(50.5\ \text{mm}, 56.6\ \text{mm})$ | Full extension with aligned curvature planes ($\Delta\alpha = 0^\circ$). Both precurvatures add constructively, maximizing lateral radial reach ($r_{\max} = 50.48\ \text{mm}$). |
+| **2** | **Orthogonal Bending** | $(46.0\ \text{mm}, 83.0\ \text{mm}, 0^\circ, 90^\circ)$ | $(49.9\ \text{mm}, 57.5\ \text{mm})$ | Tubes curved in mutually perpendicular planes at their base ($\Delta\alpha = 90^\circ$). Torsional compliance twists the backbone into a 3D non-planar spatial helix, shifting the reach forward. |
+| **3** | **S-Shape Antagonistic Inflection** | $(29.0\ \text{mm}, 83.0\ \text{mm}, 180^\circ, 0^\circ)$ | $(6.2\ \text{mm}, \mathbf{79.6\ \text{mm}})$ | **Classic S-shape configuration:** Outer tube bends outward ($+y = +6.2\ \text{mm}$), inflects at $s = 29\ \text{mm}$, and inner tube curves inward ($-y = -6.2\ \text{mm}$), crossing the $z$-axis and achieving the **absolute maximum axial reach** ($z_{\max} = 79.63\ \text{mm}$). |
+| **4** | **Pre-Snap Max Axial Reach** | $(46.0\ \text{mm}, 83.0\ \text{mm}, 0^\circ, 330^\circ)$ | $(38.1\ \text{mm}, 69.2\ \text{mm})$ | Deepest penetration under full outer tube deployment ($q_{\mathrm{OTT}} = 46\ \text{mm}$). Occurs just prior to the elastic torsional snap-through bifurcation, exploiting structural unwinding. |
+| **5** | **Outer Flush Boundary** | $(46.0\ \text{mm}, 46.0\ \text{mm}, 0^\circ, 0^\circ)$ | $(17.6\ \text{mm}, 41.2\ \text{mm})$ | Inner tube fully retracted flush with the outer tip ($\Delta L = 0$). Represents the maximum single-segment reach of the dual-tube pair before inner extension begins. |
+| **6** | **Base Emergence** | $(10.0\ \text{mm}, 15.0\ \text{mm}, 0^\circ, 0^\circ)$ | $(2.0\ \text{mm}, 14.8\ \text{mm})$ | Incipient deployment near the cannula collar. Defines the minimum axial reach and verifies smooth entry kinematics into anatomical drill sites. |
+
+In the meridian cross-section plot, the outer tube backbone segment ($0 \le s \le q_{\mathrm{OTT}}$) is traced with a thick solid line, and the extended inner tube segment ($q_{\mathrm{OTT}} < s \le q_{\mathrm{ITT}}$) is traced with a thinner line terminating at the marked distal tip badge. The central cross-section is preserved cleanly without large rectangular text boxes, enabling easy integration into publication figures with caption references..8\ \text{mm})$ | Tubes oppose each other in the overlap zone. Net curvature drops to $9.56\ \text{m}^{-1}$ ($R_{\mathrm{eff}} \approx 105\ \text{mm}$), straightening the base and advancing the tip axially. |
+| **4** | **Pre-Snap Max Axial Reach** | $(46.0\ \text{mm}, 83.0\ \text{mm}, 330^\circ)$ | $(38.1\ \text{mm}, \mathbf{69.2\ \text{mm}})$ | **Absolute maximum penetration depth** ($z_{\max} = 69.15\ \text{mm}$). Occurs just prior to the elastic torsional snap-through bifurcation, exploiting extreme structural unwinding. |
+| **5** | **Outer Flush Boundary** | $(46.0\ \text{mm}, 46.0\ \text{mm}, 0^\circ)$ | $(17.6\ \text{mm}, 41.2\ \text{mm})$ | Inner tube fully retracted flush with the outer tip ($\Delta L = 0$). Represents the maximum single-segment reach of the dual-tube pair before inner extension begins. |
+| **6** | **Base Emergence** | $(10.0\ \text{mm}, 15.0\ \text{mm}, 0^\circ)$ | $(2.0\ \text{mm}, 14.8\ \text{mm})$ | Incipient deployment near the cannula collar. Defines the minimum axial reach and verifies smooth entry kinematics into anatomical drill sites. |
+
+In the meridian cross-section plot, the outer tube backbone segment ($0 \le s \le q_{\mathrm{OTT}}$) is traced with a thick solid line, and the extended inner tube segment ($q_{\mathrm{OTT}} < s \le q_{\mathrm{ITT}}$) is traced with a thinner line terminating at the marked distal tip.
 
 ---
 
 ## 5. Visualizations Overview
 
-Four high-resolution figures have been produced in the [`modeling/figures/`](figures/) directory:
+All figures are rendered at **300 DPI** using **Computer Modern Roman (`cmr10`)**, Computer Modern math typesetting, muted scientific grids, and publication styling ([`examples/vizstyle.py`](examples/vizstyle.py)):
 
 1. **[`workspace_inner_alone.png`](figures/workspace_inner_alone.png):**
    - Panel 1: 3D perspective surface of revolution with stainless-steel guide cannula and sample backbone trajectories.
@@ -319,25 +350,54 @@ Four high-resolution figures have been produced in the [`modeling/figures/`](fig
    - Identical three-panel layout formatted in warm amber styling, illustrating the compact $46\ \text{mm}$ outer stroke envelope ($r_{\max} = 17.6\ \text{mm}, z_{\max} = 41.2\ \text{mm}$).
 
 3. **[`workspace_both_tubes.png`](figures/workspace_both_tubes.png):**
-   - Panel A: 3D bounding volume envelope and dense tip point cloud colored by radial distance.
-   - Panel B: 3D cutaway view revealing the interior volume alongside representative backbones (aligned, orthogonal, and antagonistic).
-   - Panel C: 2D meridian cross-section $\mathcal{D}_{rz}$ with area $1,346\ \text{mm}^2$ and centroid $r_c = 22.3\ \text{mm}$.
-   - Panel D: Distal tip radius modulation curve as a function of relative commanded angle $\Delta\alpha$.
+   - Panel (a): 3D bounding volume envelope and dense tip point cloud colored by radial reach.
+   - Panel (b): 3D cutaway view revealing the interior volume with all 6 extreme robot backbones in full 3D, including the inflected S-shape (Pose 3).
+   - Panel (c): 2D meridian cross-section $\mathcal{D}_{rz}$ ($1,973\ \text{mm}^2$, $r_c = 19.4\ \text{mm}$) with exact overlaid robot backbone curves and clean circular badges $\mathbf{1}$ to $\mathbf{6}$ denoting landmark boundary poses without obscuring text boxes.
+   - Panel (d): Distal tip coordinate modulation ($r, z$) as a function of relative commanded angle $\Delta\alpha$.
 
 4. **[`workspace_comparison.png`](figures/workspace_comparison.png):**
-   - Panel 1: 3D overlay comparing outer alone (amber), inner alone (blue), and both together (green volume).
-   - Panel 2: Meridian cross-section overlay showing how 1D curves bound the 2D reachable continuum area.
-   - Panel 3: Bar chart and summary table comparing radial reach, axial reach, and enclosed volume ($0\ \text{vs}\ 188.8\ \text{cm}^3$).
+   - Panel (a): 3D overlay comparing outer alone (amber), inner alone (blue), and both together (green volume).
+   - Panel (b): Meridian cross-section overlay showing how 1D single-tube curves bound the 2D reachable continuum area.
+   - Panel (c): Bar chart and summary metrics comparing radial reach, axial reach, and enclosed volume ($0\ \text{vs}\ 240.8\ \text{cm}^3$).
 
 ---
 
-## 6. Engineering & Clinical Implications
+## 6. Interactive 3D GUI Workspace Viewer
+
+An interactive 3D inspection script has been created in [`modeling/examples/interactive_workspace_3d.py`](examples/interactive_workspace_3d.py):
+
+```bash
+# From workspace root:
+./venv/bin/python3 modeling/examples/interactive_workspace_3d.py
+
+# Or from inside modeling/examples/:
+python interactive_workspace_3d.py
+```
+
+### Interactive Features:
+- **Instant Launch (< 1 second):** Automatically loads precomputed Cosserat workspace points from `figures/workspace_data.npz`.
+- **Full 3D Navigation:**
+  - **Left Click + Drag:** Smooth 3D rotation of azimuth and elevation.
+  - **Right Click + Drag / Mouse Scroll:** Fluid zoom in and out.
+  - **Middle Click + Drag:** Pan across the 3D scene.
+- **Keyboard View Presets:**
+  - `1`: Top View ($x$-$y$ footprint)
+  - `2`: Front View ($y$-$z$ elevation)
+  - `3`: Side View ($x$-$z$ elevation)
+  - `4`: Standard Isometric View
+  - `r`: Reset orientation to default perspective
+  - `s`: Save snapshot of current view to `figures/interactive_view.png` (300 DPI)
+- **Visual Elements:** Translucent emerald bounding shell, depth-shaded tip point cloud, stainless-steel guide cannula, and all 6 extreme robot backbones with white-outlined tip markers and labels.
+
+---
+
+## 7. Engineering & Clinical Implications
 
 1. **Targeting Dexterity in Confined Channels (Surgical Drilling):**
    In steerable bone drilling (e.g. skull base surgery or orthopedic articular access), reaching an anatomical target from a fixed cannula entry requires reaching an exact $(x, y, z)$ position *with a specific drilling approach angle*. While single tubes cannot alter their tip orientation at a given position, the 4-DoF system allows the surgeon to independently vary the tool angle at an interior point by adjusting $\Delta\alpha$ and $\Delta L$.
 
 2. **Obstacle Avoidance & Curved Trajectory Planning:**
-   The straightening effect in the overlapping region ($\Delta\alpha = 180^\circ$) permits the robot to reach deeper axial depths ($z = 69\ \text{mm}$) through narrower initial lateral clearances before articulating its distal tip around anatomical structures (such as nerves or blood vessels).
+   The straightening effect in the overlapping region ($\Delta\alpha = 180^\circ$ to $330^\circ$) permits the robot to reach deeper axial depths ($z = 69.2\ \text{mm}$) through narrower initial lateral clearances before articulating its distal tip around anatomical structures (such as nerves or blood vessels).
 
 3. **Importance of Closed-Loop Kinematics:**
    Because torsional windup in the transmission absorbs up to $70\%$ of the commanded relative rotation at certain configurations, open-loop workspace mapping must always be solved using the full Cosserat BVP formulation rather than rigid constant-curvature kinematics to prevent substantial targeting errors.

@@ -22,7 +22,12 @@ from __future__ import annotations
 
 import matplotlib
 
-matplotlib.use("Agg")
+# Default to Agg for headless offscreen rendering unless interactive mode was requested
+if not getattr(matplotlib, "_interactive_mode", False):
+    try:
+        matplotlib.use("Agg")
+    except Exception:
+        pass
 import matplotlib.pyplot as plt  # noqa: E402
 
 # -- roles ------------------------------------------------------------------
@@ -56,8 +61,20 @@ def ramp(n: int):
     return [RAMP[i] for i in idx]
 
 
-def apply() -> None:
-    """Install the shared rcParams.  Call once, before creating figures."""
+def apply(use_cmr: bool = True) -> None:
+    """Install the shared rcParams with publication paper styling (cmr10)."""
+    if use_cmr:
+        try:
+            import os
+            import matplotlib.font_manager as fm
+            font_dir = os.path.join(os.path.dirname(matplotlib.__file__), "mpl-data", "fonts", "ttf")
+            for fname in ("cmr10.ttf", "cmb10.ttf", "cmmi10.ttf", "cmti10.ttf"):
+                fpath = os.path.join(font_dir, fname)
+                if os.path.exists(fpath):
+                    fm.fontManager.addfont(fpath)
+        except Exception:
+            pass
+
     plt.rcParams.update(
         {
             "figure.facecolor": SURFACE,
@@ -67,10 +84,10 @@ def apply() -> None:
             "axes.labelcolor": INK_2,
             "axes.titlecolor": INK,
             "axes.titlesize": 11,
-            "axes.titleweight": "semibold",
+            "axes.titleweight": "normal",
             "axes.titlelocation": "left",
             "axes.titlepad": 10,
-            "axes.labelsize": 9,
+            "axes.labelsize": 10,
             "axes.linewidth": 0.8,
             "axes.grid": True,
             "axes.axisbelow": True,
@@ -78,8 +95,8 @@ def apply() -> None:
             "grid.linewidth": 0.8,
             "xtick.color": INK_2,
             "ytick.color": INK_2,
-            "xtick.labelsize": 8.5,
-            "ytick.labelsize": 8.5,
+            "xtick.labelsize": 9,
+            "ytick.labelsize": 9,
             "xtick.direction": "out",
             "ytick.direction": "out",
             "lines.linewidth": 2.0,
@@ -87,9 +104,13 @@ def apply() -> None:
             "legend.frameon": False,
             "legend.fontsize": 9,
             "legend.labelcolor": INK_2,
-            "font.size": 9.5,
-            "figure.dpi": 150,
-            "savefig.dpi": 150,
+            "font.size": 10,
+            "font.family": "serif",
+            "font.serif": ["cmr10", "DejaVu Serif", "Times New Roman"],
+            "mathtext.fontset": "cm",
+            "axes.formatter.use_mathtext": True,
+            "figure.dpi": 300,
+            "savefig.dpi": 300,
             "savefig.bbox": "tight",
         }
     )
@@ -131,6 +152,8 @@ def equal_aspect_3d(ax, pts) -> None:
         pass
 
 
-def caption(fig, text: str) -> None:
-    """One line of provenance under the figure."""
-    fig.text(0.0, -0.02, text, ha="left", va="top", fontsize=8, color=INK_2)
+def caption(fig, text: str, max_chars: int = 105) -> None:
+    """Provenance under the figure, wrapped to avoid inflating the savefig bounding box."""
+    import textwrap
+    wrapped = textwrap.fill(text, width=max_chars)
+    fig.text(0.01, -0.015, wrapped, ha="left", va="top", fontsize=8, color=INK_2)
