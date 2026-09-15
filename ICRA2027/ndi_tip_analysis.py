@@ -71,8 +71,12 @@ def apply_style():
         # 'text.usetex': True,
         # 'text.latex.preamble': r'\usepackage{lmodern}',
         'font.family':                 'serif',
-        'font.serif':                  ['cmr10', 'STIXGeneral', 'DejaVu Serif'],
-        'mathtext.fontset':            'cm',
+        'font.serif':                  ['Times New Roman', 'Times', 'DejaVu Serif'],
+        'mathtext.fontset':            'stix',
+        'font.weight':                 'bold',
+        'axes.labelweight':            'bold',
+        'axes.titleweight':            'bold',
+        'figure.titleweight':          'bold',
         'axes.formatter.use_mathtext': True,
         'font.size':                   9,
         'axes.labelsize':              9,
@@ -112,12 +116,19 @@ SUMMARY_CANVAS_SCALE = 2.0
 def _scaled_font_rc(scale):
     """rcParams overrides scaling every text size by `scale`."""
     return {
-        'font.size':        9 * scale,
-        'axes.labelsize':   9 * scale,
-        'axes.titlesize':  10 * scale,
-        'xtick.labelsize':  8 * scale,
-        'ytick.labelsize':  8 * scale,
-        'legend.fontsize':  8 * scale,
+        'font.family':        'serif',
+        'font.serif':         ['Times New Roman', 'Times', 'DejaVu Serif'],
+        'mathtext.fontset':   'stix',
+        'font.weight':        'bold',
+        'axes.labelweight':   'bold',
+        'axes.titleweight':   'bold',
+        'figure.titleweight': 'bold',
+        'font.size':          9 * scale,
+        'axes.labelsize':     9 * scale,
+        'axes.titlesize':    10 * scale,
+        'xtick.labelsize':    8 * scale,
+        'ytick.labelsize':    8 * scale,
+        'legend.fontsize':    8 * scale,
     }
 
 
@@ -384,6 +395,8 @@ def analyse_trial(label, path, steps, args):
 def _finish(ax):
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
+    for label in ax.get_xticklabels() + ax.get_yticklabels():
+        label.set_fontweight('bold')
 
 
 def _save(fig, out_dir, name):
@@ -656,13 +669,13 @@ def fig_kinematic_error(runs, es, out_dir):
 
 
 def fig_overview_3d(all_results, out_dir, ncols=2, fs=OVERVIEW_FONT_SCALE,
-                    cs=OVERVIEW_CANVAS_SCALE):
+                    cs=OVERVIEW_CANVAS_SCALE, suptitle=False):
     """One 3D trajectory panel per experiment set, for the report figure."""
     with plt.rc_context(_scaled_font_rc(fs)):
-        return _overview_3d_figure(all_results, out_dir, ncols, fs, cs)
+        return _overview_3d_figure(all_results, out_dir, ncols, fs, cs, suptitle=suptitle)
 
 
-def _overview_3d_figure(all_results, out_dir, ncols, fs, cs):
+def _overview_3d_figure(all_results, out_dir, ncols, fs, cs, suptitle=False):
     n = len(all_results)
     ncols = min(ncols, n)
     nrows = int(np.ceil(n / ncols))
@@ -678,31 +691,22 @@ def _overview_3d_figure(all_results, out_dir, ncols, fs, cs):
             ax.scatter(*P[0],  marker='o', s=150 * cs, facecolors='white',
                        edgecolors=c, linewidths=2.6 * cs, zorder=6)
             ax.scatter(*P[-1], marker='s', s=135 * cs, color=c, zorder=6)
-        # Compact form ("T35mm" not "T 35 mm"): the three-step sequences are
-        # 26 chars spelled out, which collides across the column gutter.
-        steps = ' + '.join(
-            ('T%.4gmm' % v) if kind == 'T' else ('R%.4g%s' % (v, DEG))
-            for kind, v in es['steps'])
-        # Short titles: the full set names do not fit at this text size, so the
-        # set key plus the trial range carries the identification and the
-        # descriptive names stay in the caption.
-        nums = [t[0].replace('Exp ', '') for t in es['trials']]
-        ax.set_title('(%s) %s   Exp %s-%s\n%s'
-                     % ('abcdef'[k], es['key'], nums[0], nums[-1], steps),
-                     fontsize=8.5 * fs, pad=12 * fs)
-        ax.set_xlabel(r'$\Delta X$ (mm)', fontsize=7.5 * fs, labelpad=8 * fs)
-        ax.set_ylabel(r'$\Delta Y$ (mm)', fontsize=7.5 * fs, labelpad=8 * fs)
-        ax.set_zlabel(r'$\Delta Z$ (mm)', fontsize=7.5 * fs, labelpad=7 * fs)
+        # Subplot title: single letter with parentheses
+        ax.set_title('(%s)' % 'abcdef'[k],
+                     fontsize=9.0 * fs, fontweight='bold', pad=4 * fs)
+        ax.set_xlabel(r'$\Delta X$ (mm)', fontsize=7.5 * fs, labelpad=8 * fs, fontweight='bold')
+        ax.set_ylabel(r'$\Delta Y$ (mm)', fontsize=7.5 * fs, labelpad=8 * fs, fontweight='bold')
+        ax.set_zlabel(r'$\Delta Z$ (mm)', fontsize=7.5 * fs, labelpad=7 * fs, fontweight='bold')
         _equal_3d(ax, np.vstack([r['Ps'] for r in runs]))
         ax.view_init(elev=22, azim=-58)
         # Three ticks per axis: more than that collides at this text size.
         for axis in (ax.xaxis, ax.yaxis, ax.zaxis):
             axis.set_major_locator(plt.MaxNLocator(3))
+            for tick in axis.get_major_ticks():
+                tick.label1.set_fontweight('bold')
         ax.tick_params(labelsize=6 * fs, pad=3 * fs)
 
-    # One shared legend rather than six: the colour order is the same in every
-    # panel, so it encodes trial index, and six enlarged legend boxes would
-    # cover the trajectories they describe.
+    # One shared legend rather than multiple:
     handles = [Line2D([0], [0], color=c, lw=2.4 * fs,
                       label='Trial %d' % (i + 1))
                for i, c in enumerate(COLORS)]
@@ -710,32 +714,33 @@ def _overview_3d_figure(all_results, out_dir, ncols, fs, cs):
                        mec='k', mew=0.5 * fs, label='Start'),
                 Line2D([0], [0], ls='none', marker='s', ms=2.2 * fs,
                        color='k', label='End')]
-    fig.legend(handles=handles, loc='lower center', ncol=5,
-               fontsize=7.5 * fs, frameon=False, bbox_to_anchor=(0.5, 0.006))
-    fig.suptitle('Tip Trajectories -- All Experiment Sets',
-                 fontsize=10.5 * fs, y=0.995)
-    # Bottom margin has to clear the last row's X/Y labels *and* the legend.
-    fig.tight_layout(rect=(0, 0.075, 1, 0.955))
-    # tight_layout cannot measure 3D axis labels -- they are drawn from the
-    # projection and extend outside the axes bbox -- so at this text size the
-    # inter-row gap has to be set by hand or each title lands on the row
-    # above's X/Y labels.
-    fig.subplots_adjust(hspace=0.95, wspace=0.20)
+    leg = fig.legend(handles=handles, loc='lower center', ncol=5,
+                     fontsize=7.5 * fs, frameon=False, bbox_to_anchor=(0.5, 0.006))
+    for text in leg.get_texts():
+        text.set_fontweight('bold')
+
+    if suptitle:
+        fig.suptitle('Tip Trajectories -- All Experiment Sets',
+                     fontsize=10.5 * fs, y=0.995, fontweight='bold')
+        fig.tight_layout(rect=(0, 0.075, 1, 0.955))
+    else:
+        fig.tight_layout(rect=(0, 0.075, 1, 0.99))
+    fig.subplots_adjust(hspace=0.40, wspace=0.20)
     return _save(fig, out_dir, 'overview_trajectories_3d.jpg')
 
 
 def fig_summary(all_results, out_dir, fs=SUMMARY_FONT_SCALE,
-                cs=SUMMARY_CANVAS_SCALE):
+                cs=SUMMARY_CANVAS_SCALE, suptitle=False):
     """Absolute error per set, translation and rotation side by side."""
     with plt.rc_context(_scaled_font_rc(fs)):
-        return _summary_figure(all_results, out_dir, fs, cs)
+        return _summary_figure(all_results, out_dir, fs, cs, suptitle=suptitle)
 
 
-def _summary_figure(all_results, out_dir, fs, cs):
-    fig, axes = plt.subplots(1, 2, figsize=(10.4 * cs, 4.3 * cs))
-    for ax, kind, unit, title in (
+def _summary_figure(all_results, out_dir, fs, cs, suptitle=False):
+    fig, axes = plt.subplots(2, 1, figsize=(5.8 * cs, 8.2 * cs))
+    for k, (ax, kind, unit, default_title) in enumerate((
             (axes[0], 'T', 'Absolute Error (mm)', 'Translation Error'),
-            (axes[1], 'R', 'Absolute Error (deg)', 'Rotation Error')):
+            (axes[1], 'R', 'Absolute Error (deg)', 'Rotation Error'))):
         names, means, stds = [], [], []
         for es, runs in all_results:
             errs = [abs(m['error']) for r in runs for m in r['measures']
@@ -748,24 +753,27 @@ def _summary_figure(all_results, out_dir, fs, cs):
             ax.axis('off')
             continue
         idx = np.arange(len(names))
-        ax.bar(idx, means, 0.6, yerr=stds, capsize=4 * cs, color='#0072B2',
+        ax.bar(idx, means, 0.55, yerr=stds, capsize=4 * cs, color='#0072B2',
                edgecolor='0.25', lw=0.6 * cs,
                error_kw=dict(lw=0.9 * cs, ecolor='0.2'))
         for i, (m, s) in enumerate(zip(means, stds)):
             ax.annotate('%.2f' % m, xy=(i, m + s), xytext=(0, 4 * fs),
                         textcoords='offset points', ha='center',
-                        fontsize=7.5 * fs)
+                        fontsize=7.5 * fs, fontweight='bold')
         ax.set_xticks(idx)
-        ax.set_xticklabels(names)
-        ax.set_ylabel(unit)
-        ax.set_title(title)
+        ax.set_xticklabels(names, fontweight='bold')
+        ax.set_ylabel(unit, fontweight='bold')
+        ax.set_title('(%s)' % 'ab'[k], fontweight='bold', pad=5 * fs)
         # Headroom for the enlarged value labels above the error bars.
         ax.set_ylim(0, max(m + s for m, s in zip(means, stds)) * 1.18)
         ax.grid(axis='x', visible=False)
         _finish(ax)
-    fig.suptitle('Kinematic Accuracy Summary (mean $\\pm$ s.d. over trials)',
-                 fontsize=11 * fs)
-    fig.tight_layout()
+    if suptitle:
+        fig.suptitle('Kinematic Accuracy Summary (mean $\\pm$ s.d. over trials)',
+                     fontsize=11 * fs, fontweight='bold')
+        fig.tight_layout(rect=(0, 0, 1, 0.94))
+    else:
+        fig.tight_layout()
     return _save(fig, out_dir, 'summary_kinematic_error.jpg')
 
 
@@ -847,6 +855,10 @@ def main():
                     help='output directory (default: <data-dir>/figures)')
     ap.add_argument('--sets', nargs='*', default=None,
                     help='only these set keys (e.g. set1 set4a)')
+    ap.add_argument('--exclude-sets', nargs='*', default=['set4a', 'set4b'],
+                    help='set keys to exclude (default: set4a set4b)')
+    ap.add_argument('--suptitle', action='store_true', default=False,
+                    help='include figure-level suptitles')
     ap.add_argument('--plane-window', type=float, default=10.0,
                     help='seconds of motion used for the plane fit (default: 10)')
     ap.add_argument('--speed-thresh', type=float, default=0.3,
@@ -876,6 +888,8 @@ def main():
         if not wanted:
             raise SystemExit('no matching sets; available: %s'
                              % ', '.join(e['key'] for e in EXPERIMENT_SETS))
+    if args.exclude_sets:
+        wanted = [e for e in wanted if e['key'] not in args.exclude_sets]
 
     all_results = []
     for es in wanted:
@@ -884,8 +898,8 @@ def main():
             all_results.append((es, runs))
 
     if all_results:
-        fig_summary(all_results, args.out_dir)
-        fig_overview_3d(all_results, args.out_dir)
+        fig_summary(all_results, args.out_dir, suptitle=args.suptitle)
+        fig_overview_3d(all_results, args.out_dir, suptitle=args.suptitle)
         print('\nwrote %s' % write_csv(all_results, args.out_dir))
         print('wrote %s/summary_kinematic_error.jpg' % args.out_dir)
         print('wrote %s/overview_trajectories_3d.jpg' % args.out_dir)
